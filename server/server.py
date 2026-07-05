@@ -1,27 +1,17 @@
+from flask import Flask
 from pathlib import Path
 
-#Path to the folder where server.py is located
-SERVER_FOLDER=Path(__file__).parent
+app=Flask(__name__)
 
-#Path to notice.txt
-NOTICE_FILE=SERVER_FOLDER/"notice.txt"
+@app.route("/")
+def home():
+    return "School TV control Server Running"
 
-#Create the file if it doesn't exist
-if not NOTICE_FILE.exists():
-    NOTICE_FILE.write_text("Welcome to Nath Valley School!")
+notice_folder=Path(__file__).resolve().parent
+notice=notice_folder/"notice.txt"
 
-#Read the current notice
-current_notice=NOTICE_FILE.read_text()
+@app.route("/get_notice")
+def get_notice():
+    return notice.read_text()
 
-print("==== SERVER STARTED ====")
-print("Current Notice:")
-print(current_notice)
-print()
-
-new_notice=input("Enter a new notice (or press Enter to keep current):")
-
-if new_notice:
-    NOTICE_FILE.write_text(new_notice)
-    print("Notice updated successfully")
-else:
-    print("Notice unchanged.")
+app.run(host="0.0.0.0",port=5000)
