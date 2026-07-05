@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask,request
 from pathlib import Path
 
 app=Flask(__name__)
@@ -14,4 +14,11 @@ notice=notice_folder/"notice.txt"
 def get_notice():
     return notice.read_text()
 
+@app.route("/update_notice",methods=["POST"])
+def update_notice():
+    notice.write_text(request.data.decode())
+    return "Success"
+
 app.run(host="0.0.0.0",port=5000)
+
+    
