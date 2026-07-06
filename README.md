@@ -7,10 +7,12 @@ A system to allow the school administration to display notices on multiple TVs a
 - ✅ Git repository initialized
 - ✅ Flask server created
 - ✅ Server health endpoint (/)
-- ✅ GET /get_notice reads the latest notice from notice.txt
+- ✅ GET /get_notice reads the latest notice
+- ✅ POST /update_notice updates the latest notice
+- ✅ Python VP client sends notices to the server successfully
 
 ## Next Goals
 
-- ⏳ Build /update_notice endpoint
 - ⏳ Build receiver application
-- ⏳ Display notices on a TV
+- ⏳ Automatically refresh notices
+- ⏳ Full TV display mode
