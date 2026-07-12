@@ -16,7 +16,7 @@ def get_notice():
 
 @app.route("/update_notice",methods=["POST"])
 def update_notice():
-    notice.write_text(request.data.decode())
+    notice.write_text(request.form["notice"])
     return "Success"
 
 app.run(host="0.0.0.0",port=5000)
