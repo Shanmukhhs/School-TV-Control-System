@@ -77,14 +77,28 @@ divider3.pack(fill="x", padx=80, pady=15)
 # -----------------------------
 # Footer
 # -----------------------------
+footer = tkinter.Frame(window, bg="white")
+footer.pack(fill="x", padx=40, pady=(0, 20))
+
+connection_status = tkinter.Label(
+    footer,
+    text="🟢 Connected",
+    font=("Arial", 16, "bold"),
+    bg="white",
+    fg="green"
+)
+
+connection_status.pack(side="left")
+
 last_updated = tkinter.Label(
-    window,
+    footer,
     text="Last Updated: Never",
     font=("Arial", 16),
     bg="white",
     fg="gray"
 )
-last_updated.pack(pady=(0, 25))
+
+last_updated.pack(side="right")
 
 # -----------------------------
 # Server Update Function
@@ -94,6 +108,10 @@ def check_for_updates():
 
     try:
         response = requests.get("http://127.0.0.1:5000/get_notice")
+        connection_status.config(
+    text="🟢 Connected",
+    fg="green"
+)
         current_notice = response.text.strip()
 
         if current_notice != previous_notice:
@@ -123,11 +141,12 @@ def check_for_updates():
 
             previous_notice = current_notice
 
-    except Exception as e:
-        notice_label.config(
-    text="Connecting to Server...",
-    font=("Arial", 32, "bold")
-)
+    except Exception:
+
+        connection_status.config(
+        text="🔴 Offline",
+        fg="red"
+    )
 
     window.after(5000, check_for_updates)
 
