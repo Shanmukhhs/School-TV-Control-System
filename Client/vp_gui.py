@@ -81,5 +81,4 @@ last_sent_label = tkinter.Label(
 last_sent_label.pack()
 
 
-
 window.mainloop()

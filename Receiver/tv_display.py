@@ -107,7 +107,7 @@ def check_for_updates():
     global previous_notice
 
     try:
-        response = requests.get("http://127.0.0.1:5000/get_notice")
+        response = requests.get("http://127.0.0.1:5000/get_notice",timeout=3)
         connection_status.config(
     text="🟢 Connected",
     fg="green"
@@ -141,7 +141,8 @@ def check_for_updates():
 
             previous_notice = current_notice
 
-    except Exception:
+    except Exception as e:
+        print("ERROR:",e)
 
         connection_status.config(
         text="🔴 Offline",
