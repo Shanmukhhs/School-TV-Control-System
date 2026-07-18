@@ -2,6 +2,15 @@ from pathlib import Path
 import sys
 from datetime import datetime
 import requests
+import json
+
+config_path = Path(__file__).resolve().parent / "receiver_config.json"
+
+with open(config_path, "r") as file:
+    config = json.load(file)
+
+SERVER_IP = config["server_ip"]
+PORT = config["port"]
 
 print("=" * 40)
 print("Starting Nath Valley TV Display...")
@@ -25,7 +34,7 @@ print("Launching TV Display...")
 print("Checking server...")
 
 try:
-    response = requests.get("http://127.0.0.1:5000", timeout=3)
+    response = requests.get(f"http://{SERVER_IP}:{PORT}", timeout=3)
 
     if response.status_code == 200:
         print("✓ Server is online.")

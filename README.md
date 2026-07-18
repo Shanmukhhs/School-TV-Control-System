@@ -2,6 +2,14 @@
 
 A centralized digital notice management system that allows school administrators to display notices on multiple TVs across the campus from a single computer.
 
+## 🎥 Demo
+
+➡️ **[Watch the Version 1 MVP Demo](https://drive.google.com/file/d/1Ti24mn8l3MHF61dEPDj9c6kjnVPeBxXE/view?usp=sharing)**
+
+## Version
+
+**Current Version:** Version 1 MVP ✅
+
 ## Features Implemented
 
 * ✅ Flask server for centralized notice management
@@ -13,35 +21,51 @@ A centralized digital notice management system that allows school administrators
 * ✅ Notice validation (prevents empty notices)
 * ✅ Status messages for successful or failed operations
 * ✅ Automatic "Last Sent" timestamp
-* ✅ Receiver application that polls the server every 5 seconds
-* ✅ Receiver updates the display only when the notice changes
-* ✅ End-to-end communication between the VP application, server, and receiver
+* ✅ Full-screen TV receiver application
+* ✅ Automatic notice polling every 5 seconds
+* ✅ Updates display only when the notice changes
+* ✅ Offline detection when server becomes unavailable
+* ✅ Automatic reconnection when server returns
+* ✅ Configurable receiver using JSON configuration
+* ✅ End-to-end communication between administrator, server and TV receiver
+* ✅ Successfully demonstrated on a real LG TV via HDMI
 
 ## Current System Architecture
 
 ```text
-VP GUI
-   │
-HTTP POST
-   │
-   ▼
-Flask Server
-   │
-Updates notice.txt
-   │
-   ▼
-Receiver
-   │
-HTTP GET (every 5 seconds)
-   │
-   ▼
-TV Display
+Administrator Laptop
+│
+├── VP GUI
+├── Flask Server
+│
+└─────────────── HTTP ───────────────┐
+                                     │
+                              Receiver Device
+                              ├── start_tv.py
+                              └── tv_display.py
+                                     │
+                                   HDMI
+                                     │
+                                     ▼
+                                 Television
 ```
 
-## Next Goals
+## Demonstration
 
-* ⏳ Replace terminal output with a full-screen TV display
-* ⏳ Deploy the receiver on Raspberry Pi
-* ⏳ Connect Raspberry Pis over the school LAN
-* ⏳ Automatically launch the receiver on Raspberry Pi startup
-* ⏳ Deploy the system across multiple TVs in the school
+Version 1 MVP has been successfully demonstrated on a real television.
+
+Current demonstration setup:
+
+- Administrator interface running on laptop
+- Receiver running on laptop
+- Output displayed on LG TV through HDMI
+- Live notice updates
+- Offline detection
+- Automatic reconnection
+
+## Next Goals (Version 2)
+
+* ⏳ Deploy receiver on Raspberry Pi
+* ⏳ Connect receivers over the school LAN
+* ⏳ Auto-start receiver on Raspberry Pi boot
+* ⏳ Support multiple TVs simultaneously

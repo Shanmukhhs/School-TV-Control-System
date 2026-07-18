@@ -16,7 +16,7 @@ def send_notice():
 
     try:
         response = requests.post(
-            "http://127.0.0.1:5000/update_notice",
+            "http://192.168.1.4:5000/update_notice",
             data={"notice": notice}
         )
 

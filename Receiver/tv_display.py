@@ -3,6 +3,7 @@ import requests
 from datetime import datetime
 from pathlib import Path
 from PIL import Image, ImageTk
+import json
 
 # -----------------------------
 # Window
@@ -11,7 +12,7 @@ window = tkinter.Tk()
 project_folder = Path(__file__).resolve().parent.parent
 logo_path = project_folder / "Assets" / "nath valley logo.png"
 window.title("Nath Valley School TV Display")
-window.attributes("-fullscreen", True)
+window.geometry("700x500")
 window.configure(bg="white")
 
 # Press ESC to exit while developing
@@ -21,6 +22,12 @@ window.bind("<Escape>", lambda event: window.destroy())
 # Variables
 # -----------------------------
 previous_notice = ""
+config_path = Path(__file__).resolve().parent / "receiver_config.json"
+with open(config_path, "r") as file:
+    config = json.load(file)
+
+SERVER_IP = config["server_ip"]
+PORT = config["port"]
 
 # -----------------------------
 # Header
@@ -107,7 +114,10 @@ def check_for_updates():
     global previous_notice
 
     try:
-        response = requests.get("http://127.0.0.1:5000/get_notice",timeout=3)
+        response = requests.get(
+    f"http://{SERVER_IP}:{PORT}/get_notice",
+    timeout=3
+)
         connection_status.config(
     text="🟢 Connected",
     fg="green"
