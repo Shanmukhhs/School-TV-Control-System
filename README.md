@@ -4,7 +4,7 @@ A centralized digital notice management system that allows school administrators
 
 ## 🎥 Demo
 
-➡️ **[Watch the Version 1 MVP Demo](https://drive.google.com/file/d/1Ti24mn8l3MHF61dEPDj9c6kjnVPeBxXE/view?usp=sharing)**
+➡️ **[Watch the Version 1 MVP Demo(currently not available)]()**
 
 ## Version
 
@@ -29,7 +29,7 @@ A centralized digital notice management system that allows school administrators
 * ✅ Automatic reconnection when server returns
 * ✅ Configurable receiver using JSON configuration
 * ✅ End-to-end communication between administrator, server and TV receiver
-* ✅ Successfully demonstrated on a real LG TV via HDMI
+* ✅ Successfully demonstrated on a real non-smart TV via HDMI
 * ✅ **Fully web-based** — no Tkinter/Python GUI dependencies
 
 ## System Architecture
@@ -55,24 +55,26 @@ Administrator Laptop
 ## Quick Start
 
 1. Install dependencies: `pip install -r requirements.txt`
-2. Start the server: `python server/server.py`
-3. Open admin page: `http://<server-ip>:5000/admin`  
-   Or run: `python Client/start_admin.py` (opens browser automatically)
-4. Open TV display: `http://<server-ip>:5000/display`  
-   Or run: `python Receiver/start_tv.py` (opens browser on the receiver machine)
+2. Start the server: `cd ./server/ | python3 server.py`
+3. Open admin page: `http://<your ipv4 address>:5000/admin`(you will see the address after running server.py)
+4. Open TV display: `http://<your ipv4 address>:5000/display`
 
 ## Configuration
 
-Edit `Receiver/receiver_config.json` to set the server IP and port:
+The `Receiver/receiver_config.json` looks something like this:
 
 ```json
 {
-    "server_ip": "192.168.1.4",
+    "server_ip": "0.0.0.0",
     "port": 5000
 }
 ```
 
-The server reads this config file on startup, so you only need to configure it in one place.
+* `"server_ip"` : `"0.0.0.0"` : This tells the Flask server to bind to all available network interfaces on the VP's computer. 
+This is what makes the server accessible to every device on the same LAN (e.g., http://192.168.1.4:5000, http://10.0.0.5:5000, etc.).
+If this were set to `"127.0.0.1"` or `"localhost"`, only the VP's own machine could access the admin/display pages.
+* `"port"`: `5000`: Defines which port the Flask server listens on.
+
 
 ## Project Structure
 
@@ -91,10 +93,7 @@ School-TV-Control-System-main/
 │       └── js/
 │           ├── admin.js
 │           └── display.js
-├── Client/
-│   └── start_admin.py         # Launcher for admin page
 ├── Receiver/
-│   ├── start_tv.py            # Launcher for TV display
 │   └── receiver_config.json   # Shared configuration
 ├── Assets/
 │   └── nath valley logo.png
@@ -109,7 +108,7 @@ Version 2 has been fully migrated to a web-based architecture:
 - Administrator interface runs in any browser (`/admin`)
 - TV display runs in any browser (`/display`)
 - No Tkinter or Python GUI dependencies required
-- Output displayed on LG TV through HDMI
+- Output displayed on dumb TV(non-smart TV) through HDMI
 - Live notice updates
 - Offline detection
 - Automatic reconnection
