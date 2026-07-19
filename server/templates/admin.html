@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nath Valley School - TV Notice Management</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+  <main class="container">
+    <h1>NATH VALLEY SCHOOL<br>TV Notice Management</h1>
+
+    <label for="notice-box">Notice:</label>
+    <textarea id="notice-box" rows="12" placeholder="Enter notice text..."></textarea>
+
+    <button id="send-btn" type="button">SEND NOTICE</button>
+
+    <p id="status-label" class="status">Status: Ready</p>
+    <p id="last-sent-label" class="meta">Last Sent: Never</p>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
