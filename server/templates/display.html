@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nath Valley School TV Display</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/display.css') }}">
+</head>
+<body>
+  <header class="header">
+    <img id="logo" src="{{ url_for('serve_asset', filename='nath valley logo.png') }}" alt="Nath Valley School logo" class="logo">
+  </header>
+
+  <hr class="divider">
+
+  <h1 class="title">NOTICE</h1>
+
+  <hr class="divider">
+
+  <section class="notice-area">
+    <p id="notice-text" class="notice">No Notice Available</p>
+  </section>
+
+  <hr class="divider">
+
+  <footer class="footer">
+    <span id="connection-status" class="connected">🟢 Connected</span>
+    <span id="last-updated" class="meta">Last Updated: Never</span>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/display.js') }}"></script>
+</body>
+</html>
