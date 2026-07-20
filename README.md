@@ -35,21 +35,42 @@ A centralized digital notice management system that allows school administrators
 ## System Architecture
 
 ```text
-Administrator Laptop
-│
-├── Flask Server
-│   ├── /admin  (send notices via browser)
-│   └── /display (TV view — open in any browser)
-│
-└─────────────── HTTP ───────────────┐
-                                     │
-                              Receiver Device
-                              └── Browser → /display
-                                     │
-                                   HDMI
-                                     │
-                                     ▼
-                                 Television
+                         ┌──────────────────────────────────────┐
+                         │     Administrator Browser            │
+                         │  /admin - Compose & Send Notices     │
+                         └──────────────────┬───────────────────┘
+                                            │
+                                 HTTP POST /update_notice
+                                            │
+                                            ▼
+          ┌─────────────────────────────────────────────────────────────┐
+          │             Flask Server (Central Hub)                      │
+          │                                                             │
+          │  • REST API (GET/POST endpoints)                            │
+          │  • Notice state management                                  │
+          │  • Static file serving                                      │
+          │  • Listening on Port 5000 (LAN)                             │
+          └─────────────────────────┬───────────────────────────────────┘
+                                    │
+                       HTTP GET /get_notice (every 5 seconds)
+                                    │
+                                    ▼
+                    ┌──────────────────────────────────────┐
+                    │      Receiver Browser (Any Device)   │
+                    │   /display - Full-screen Notice View │
+                    │                                      │
+                    │  • Auto-update on change             │
+                    │  • Offline detection                 │
+                    │  • Automatic reconnection            │
+                    └──────────────────┬───────────────────┘
+                                       │
+                                   HDMI Output
+                                       │
+                                       ▼
+                          ┌────────────────────────┐
+                          │      Television        │
+                          │   (Smart or Dumb TV)   │
+                          └────────────────────────┘
 ```
 
 ## Quick Start
