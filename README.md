@@ -4,7 +4,7 @@ A centralized digital notice management system that allows school administrators
 
 ## 🎥 Demo
 
-➡️ **[Watch the Version 1 MVP Demo(currently not available)]()**
+➡️ **[Watch the Version 2 — Fully Web-Based Demo Video](https://drive.google.com/file/d/1OlHCWpc9dg4tUG7Vy0DAjp_KplrAb89P/view?usp=sharing)**
 
 ## Version
 
