@@ -73,6 +73,20 @@ A centralized digital notice management system that allows school administrators
                           └────────────────────────┘
 ```
 
+Notes:
+
+- POST /update_notice: expects application/x-www-form-urlencoded with a field named "notice" (admin UI sends URL-encoded form). Example:
+
+  curl -X POST -d "notice=Hello+students" http://<server_ip>:5000/update_notice
+
+- GET /get_notice: returns the raw notice text. Receiver polls every 5 seconds by default (server/static/js/display.js). If you want lower latency or fewer requests, consider Server-Sent Events (SSE) or WebSockets instead of polling.
+
+- Port & bind: Port defaults to 5000 and is configurable in Receiver/receiver_config.json. Do not expose this server directly to the public internet; run behind a firewall or VPN if remote access is needed.
+
+- TVs without browsers: For TVs without a built-in browser, use a small HDMI stick (Chromecast/Fire TV/Roku) or a Raspberry Pi running a kiosk browser. Recommended: set the receiver to full-screen (F11) and disable sleep/screensaver on the device.
+
+
+
 ## Quick Start
 
 1. Install dependencies: `pip install -r requirements.txt`
