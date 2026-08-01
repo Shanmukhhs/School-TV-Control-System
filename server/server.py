@@ -16,9 +16,11 @@ if CONFIG_PATH.exists():
         config = json.load(f)
     SERVER_IP = config.get("server_ip", "0.0.0.0")
     PORT = config.get("port", 5000)
+    API_KEY = config.get("api_key")  # optional: set to a string to require Authorization
 else:
     SERVER_IP = "0.0.0.0"
     PORT = 5000
+    API_KEY = None
 
 
 @app.route("/")
@@ -28,7 +30,9 @@ def home():
 
 @app.route("/admin")
 def admin_page():
-    return render_template("admin.html")
+    # Pass API key to the admin template so admin UI can include it when sending updates.
+    # If API_KEY is None, the admin UI will not include an Authorization header.
+    return render_template("admin.html", api_key=API_KEY or "")
 
 
 @app.route("/display")
@@ -52,6 +56,15 @@ def get_notice():
 
 @app.route("/update_notice", methods=["POST"])
 def update_notice():
+    # If API_KEY is set in config, require a Bearer token in the Authorization header.
+    if API_KEY:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return ("Unauthorized: missing or invalid Authorization header", 401)
+        token = auth_header.split(" ", 1)[1]
+        if token != API_KEY:
+            return ("Unauthorized: invalid API key", 401)
+
     notice = request.form.get("notice", "")
 
     if not notice.strip():

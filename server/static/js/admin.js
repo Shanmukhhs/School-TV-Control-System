@@ -25,9 +25,14 @@ async function sendNotice() {
 
   try {
     const body = new URLSearchParams({ notice });
+    const apiKeyMeta = document.querySelector('meta[name="api-key"]');
+    const apiKey = apiKeyMeta ? apiKeyMeta.content : "";
+    const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+
     const response = await fetch("/update_notice", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers,
       body,
     });
 

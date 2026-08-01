@@ -79,11 +79,17 @@ Notes:
 
   curl -X POST -d "notice=Hello+students" http://<server_ip>:5000/update_notice
 
+  If an API key is configured in Receiver/receiver_config.json (api_key), the server requires an Authorization header in the form:
+
+    Authorization: Bearer <api_key>
+
 - GET /get_notice: returns the raw notice text. Receiver polls every 5 seconds by default (server/static/js/display.js). If you want lower latency or fewer requests, consider Server-Sent Events (SSE) or WebSockets instead of polling.
 
 - Port & bind: Port defaults to 5000 and is configurable in Receiver/receiver_config.json. Do not expose this server directly to the public internet; run behind a firewall or VPN if remote access is needed.
 
 - TVs without browsers: For TVs without a built-in browser, use a small HDMI stick (Chromecast/Fire TV/Roku) or a Raspberry Pi running a kiosk browser. Recommended: set the receiver to full-screen (F11) and disable sleep/screensaver on the device.
+
+- Authorization: To enable simple write-protection, set "api_key" in Receiver/receiver_config.json. The admin UI will include this key when rendering the admin page, so the browser can send updates. Keep the api_key secret — do not commit real secrets to the repository.
 
 
 
