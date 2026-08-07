@@ -1,0 +1,14 @@
+# Local secrets and machine-specific config
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Python cache/build output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+

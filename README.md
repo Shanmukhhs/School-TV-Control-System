@@ -36,6 +36,22 @@ A reliable, centralized digital notice management system that allows school admi
 * ✅ End-to-end communication between administrator, server, and TV receiver
 * ✅ Successfully demonstrated on a real non-smart TV via HDMI
 
+## Secure Local Configuration
+
+This repository is public, so real passwords and Flask secret keys must **not** be committed.
+
+1. Copy `.env.example` to `.env` in the project root.
+2. Replace `SECRET_KEY` with a new random value:
+
+   ```bash
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+
+3. Replace `ADMIN_PASSWORD` with your private admin password.
+4. Keep `.env` local only. It is ignored by Git.
+
+The old hardcoded values from earlier commits should be treated as compromised. Use new values before running the server.
+
 ## System Architecture
 
 ```text
