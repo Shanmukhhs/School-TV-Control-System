@@ -1,20 +1,28 @@
-# School TV Control System
+## Next Goals
 
-A reliable, centralized digital notice management system that allows school administrators to display announcements on multiple TVs across the campus from a single computer. Designed for large campuses with distributed buildings.
+* ⏳ Test the software on a real rasp node in school.
 
-## 🎥 Demo
+## Version History & Changelog
 
 ➡️ **[Watch the Version 3 — Fully Web-Based Demo Video](https://drive.google.com/file/d/1OEq-8gNx8BgbtEfOIYGgZZHT2tgnrQj2/view?usp=drive_link)**
+**Version 3.1 — Advanced Security & Session Management**
+* Replaced hardcoded secrets with local `.env` environment variables.
+* Implemented constant-time password comparison using `hmac.compare_digest` to prevent timing attacks.
+* Added automatic session expiration and secure cookie flags (`HTTPONLY`, `SAMESITE`).
+* Updated `.gitignore` to prevent accidental commits of local secret files.
 
-## Version
+**Version 3 — Production Ready & Offline Resilience**
+* Switched from Flask dev server to Waitress WSGI server.
+* Added client-side `localStorage` caching for offline network failure resilience.
+* Implemented basic admin authentication.
 
-**Current Version:** Version 3 — Production Ready & Secure ✅
+**Version 2 — Fully Web-Based**
+* Migrated from desktop GUI to a web-based architecture.
 
-* Version 1 — Desktop GUI (Tagged: `gui-version`)
-* Version 2 — Fully Web-Based (Demo in link above)
-* **Version 3 — Production Server, Offline Caching & Auth (Current)**
+## Authors & Contributors
 
-## Key Features
+* **[Shanmukh Sitturi]** — *Architecture, Offline Caching, Hardware/Software Integration*
+* **[Raghav Raut]** — *Security, Session Management, Environment Variables*
 
 * ✅ **Production WSGI Server:** Runs on Waitress to handle concurrent requests from multiple TVs polling simultaneously.
 * ✅ **Offline Caching:** If the network drops or the server restarts, displays automatically show the last cached notice instead of crashing to a browser error screen. Survives page refresh.
@@ -55,3 +63,4 @@ Administrator Laptop
                                              │
                                              ▼
                                          Television
+Class 11, Nath Valley School
