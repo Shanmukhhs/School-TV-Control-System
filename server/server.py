@@ -1,17 +1,82 @@
-from flask import Flask, request, render_template, send_from_directory, session, redirect
-from pathlib import Path
-import json
 from functools import wraps
+from datetime import timedelta
+from pathlib import Path
+import hmac
+import json
+import os
 
-app = Flask(__name__)
+from flask import Flask, request, render_template, send_from_directory, session, redirect
 
-app.secret_key = "nathvalley-notice-system-2025"
-ADMIN_PASSWORD = "admin123"
+try:
+    from dotenv import load_dotenv
+except ImportError:  # Allows OS-level environment variables without python-dotenv installed.
+    load_dotenv = None
 
 SERVER_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SERVER_DIR.parent
 ASSETS_DIR = PROJECT_ROOT / "Assets"
 NOTICE_FILE = SERVER_DIR / "notice.txt"
+
+if load_dotenv is not None:
+    load_dotenv(PROJECT_ROOT / ".env")
+    load_dotenv(SERVER_DIR / ".env")
+
+
+def get_required_secret(name, disallowed_values):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable {name}. "
+            "Copy .env.example to .env and set a private value."
+        )
+
+    if value.lower() in {item.lower() for item in disallowed_values}:
+        raise RuntimeError(
+            f"Environment variable {name} is still using an unsafe placeholder/old value. "
+            "Replace it with a new private value before starting the server."
+        )
+
+    return value
+
+
+def env_flag(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_positive_int(name, default):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise RuntimeError(f"Environment variable {name} must be a whole number.") from exc
+    if parsed <= 0:
+        raise RuntimeError(f"Environment variable {name} must be greater than zero.")
+    return parsed
+
+
+SECRET_KEY = get_required_secret(
+    "SECRET_KEY",
+    {"change-me", "replace-me", "nathvalley-notice-system-2025"},
+)
+ADMIN_PASSWORD = get_required_secret(
+    "ADMIN_PASSWORD",
+    {"change-me", "replace-me", "admin123"},
+)
+
+app = Flask(__name__)
+app.config.update(
+    SECRET_KEY=SECRET_KEY,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Strict",
+    # Keep false on plain LAN HTTP. Set true only when serving the admin site over HTTPS.
+    SESSION_COOKIE_SECURE=env_flag("SESSION_COOKIE_SECURE", default=False),
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=env_positive_int("ADMIN_SESSION_HOURS", 8)),
+)
 
 CONFIG_PATH = PROJECT_ROOT / "Receiver" / "receiver_config.json"
 if CONFIG_PATH.exists():
@@ -42,7 +107,9 @@ def home():
 def admin_login():
     if request.method == "POST":
         password = request.form.get("password", "")
-        if password == ADMIN_PASSWORD:
+        if hmac.compare_digest(password, ADMIN_PASSWORD):
+            session.clear()
+            session.permanent = True
             session["authenticated"] = True
             return redirect("/admin")
         return render_template("login.html", error="Wrong password")
@@ -96,4 +163,4 @@ if __name__ == "__main__":
     except ImportError:
         print("Waitress not found. Running with Flask dev server (NOT for production)")
         print("Install waitress with: pip install waitress")
-        app.run(host=SERVER_IP, port=PORT, debug=True)
+        app.run(host=SERVER_IP, port=PORT, debug=False)
