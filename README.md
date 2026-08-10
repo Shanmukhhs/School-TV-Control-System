@@ -1,73 +1,26 @@
-# School TV Control System
+## Next Goals
 
-A reliable, centralized digital notice management system that allows school administrators to display announcements on multiple TVs across the campus from a single computer. Designed for large campuses with distributed buildings.
+* ⏳ Test the software on a real rasp node in school.
 
-## 🎥 Demo
+## Version History & Changelog
 
-➡️ **[Watch the Version 2 — Fully Web-Based Demo Video](https://drive.google.com/file/d/1OlHCWpc9dg4tUG7Vy0DAjp_KplrAb89P/view?usp=sharing)**
+**Version 3.1 — Advanced Security & Session Management**
+* Replaced hardcoded secrets with local `.env` environment variables.
+* Implemented constant-time password comparison using `hmac.compare_digest` to prevent timing attacks.
+* Added automatic session expiration and secure cookie flags (`HTTPONLY`, `SAMESITE`).
+* Updated `.gitignore` to prevent accidental commits of local secret files.
 
-## Version
+**Version 3 — Production Ready & Offline Resilience**
+* Switched from Flask dev server to Waitress WSGI server.
+* Added client-side `localStorage` caching for offline network failure resilience.
+* Implemented basic admin authentication.
 
-**Current Version:** Version 3 — Production Ready & Secure ✅
+**Version 2 — Fully Web-Based**
+* Migrated from desktop GUI to a web-based architecture.
 
-* Version 1 — Desktop GUI (Tagged: `gui-version`)
-* Version 2 — Fully Web-Based (Demo in link above)
-* **Version 3 — Production Server, Offline Caching & Auth (Current)**
+## Authors & Contributors
 
-## Key Features
+* **[Shanmukh Sitturi]** — *Architecture, Offline Caching, Hardware/Software Integration*
+* **[Raghav Raut]** — *Security, Session Management, Environment Variables*
 
-* ✅ **Production WSGI Server:** Runs on Waitress to handle concurrent requests from multiple TVs polling simultaneously.
-* ✅ **Offline Caching:** If the network drops or the server restarts, displays automatically show the last cached notice instead of crashing to a browser error screen. Survives page refresh.
-* ✅ **Admin Authentication:** Password-protected admin panel prevents unauthorized users from changing notices.
-* ✅ **Real-Time Connection Monitoring:** Displays show a green/red status indicator with cached data timestamps during outages.
-* ✅ Flask server for centralized notice management
-* ✅ Health endpoint (`/`)
-* ✅ `GET /get_notice` API to retrieve the latest notice
-* ✅ `POST /update_notice` API to update the current notice
-* ✅ Web-based VP admin page (`/admin`)
-* ✅ Web-based TV display page (`/display`)
-* ✅ Multi-line notice editor with validation (prevents empty notices)
-* ✅ Automatic "Last Sent" timestamp
-* ✅ Full-screen TV display in browser (F11 on receiver device)
-* ✅ Automatic notice polling every 5 seconds
-* ✅ Updates display only when the notice changes
-* ✅ Automatic reconnection when server returns
-* ✅ Configurable receiver using JSON configuration
-* ✅ End-to-end communication between administrator, server, and TV receiver
-* ✅ Successfully demonstrated on a real non-smart TV via HDMI
-
-## Secure Local Configuration
-
-This repository is public, so real passwords and Flask secret keys must **not** be committed.
-
-1. Copy `.env.example` to `.env` in the project root.
-2. Replace `SECRET_KEY` with a new random value:
-
-   ```bash
-   python -c "import secrets; print(secrets.token_hex(32))"
-   ```
-
-3. Replace `ADMIN_PASSWORD` with your private admin password.
-4. Keep `.env` local only. It is ignored by Git.
-
-The old hardcoded values from earlier commits should be treated as compromised. Use new values before running the server.
-
-## System Architecture
-
-```text
-Administrator Laptop
-│
-├── Waitress Production Server (Flask App)
-│   ├── /admin/login  (secure authentication)
-│   ├── /admin        (send notices via browser)
-│   └── /display      (TV view — open in any browser)
-│
-└─────────────── HTTP (LAN/Wi-Fi) ───────────┐
-                                             │
-                                      Receiver Device(s)
-                                      └── Browser → /display
-                                             │
-                                           HDMI
-                                             │
-                                             ▼
-                                         Television
+Class 11, Nath Valley School
