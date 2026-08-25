@@ -15,7 +15,7 @@ The current codebase is the result of an active migration from the original desk
 * **One-Click Launcher:** `start_server.bat` sets the admin password, creates the Python environment on first run, starts the server, and opens the admin panel automatically.
 * **Reliability Fixes:** Fixed a login crash on non-ASCII passwords, added `GET /admin/logout`, and improved the startup banner.
 
-➡️ **[Watch the Web-Based Demo Video](https://drive.google.com/file/d/1OEq-8gNx8BgbtEfOIYGgZZHT2tgnrQj2/view?usp=drive_link)**
+➡️ **[Watch the Web-Based Demo Video](https://drive.google.com/file/d/1iVBYb8GILWpfox7SPKeaAoZUHqqqr7uL/view?usp=sharing)**
 
 ## Quick Start
 
