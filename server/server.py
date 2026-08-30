@@ -1,21 +1,24 @@
 from functools import wraps
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import hmac
 import json
 import os
 
-from flask import Flask, request, render_template, send_from_directory, session, redirect
+from flask import Flask, request, render_template, send_from_directory, session, redirect, jsonify
 
 try:
     from dotenv import load_dotenv
-except ImportError:  # Allows OS-level environment variables without python-dotenv installed.
+except ImportError:
     load_dotenv = None
 
 SERVER_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SERVER_DIR.parent
 ASSETS_DIR = PROJECT_ROOT / "Assets"
 NOTICE_FILE = SERVER_DIR / "notice.txt"
+
+# Indian Standard Time (UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 if load_dotenv is not None:
     load_dotenv(PROJECT_ROOT / ".env")
@@ -29,13 +32,11 @@ def get_required_secret(name, disallowed_values):
             f"Missing required environment variable {name}. "
             "Copy .env.example to .env and set a private value."
         )
-
     if value.lower() in {item.lower() for item in disallowed_values}:
         raise RuntimeError(
             f"Environment variable {name} is still using an unsafe placeholder/old value. "
             "Replace it with a new private value before starting the server."
         )
-
     return value
 
 
@@ -59,21 +60,14 @@ def env_positive_int(name, default):
     return parsed
 
 
-SECRET_KEY = get_required_secret(
-    "SECRET_KEY",
-    {"change-me", "replace-me", "nathvalley-notice-system-2025"},
-)
-ADMIN_PASSWORD = get_required_secret(
-    "ADMIN_PASSWORD",
-    {"change-me", "replace-me", "admin123"},
-)
+SECRET_KEY = get_required_secret("SECRET_KEY", {"change-me", "replace-me", "nathvalley-notice-system-2025"})
+ADMIN_PASSWORD = get_required_secret("ADMIN_PASSWORD", {"change-me", "replace-me", "admin123"})
 
 app = Flask(__name__)
 app.config.update(
     SECRET_KEY=SECRET_KEY,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Strict",
-    # Keep false on plain LAN HTTP. Set true only when serving the admin site over HTTPS.
     SESSION_COOKIE_SECURE=env_flag("SESSION_COOKIE_SECURE", default=False),
     PERMANENT_SESSION_LIFETIME=timedelta(hours=env_positive_int("ADMIN_SESSION_HOURS", 8)),
 )
@@ -98,6 +92,33 @@ def require_auth(f):
     return decorated_function
 
 
+def read_notice_data():
+    if not NOTICE_FILE.exists():
+        return {"notice": "", "updated_at": ""}
+    
+    content = NOTICE_FILE.read_text(encoding="utf-8").strip()
+    if not content:
+        return {"notice": "", "updated_at": ""}
+    
+    try:
+        # Try to read new JSON format
+        data = json.loads(content)
+        if "notice" in data and "updated_at" in data:
+            return data
+    except json.JSONDecodeError:
+        # Fallback for old plain-text format
+        pass
+        
+    return {"notice": content, "updated_at": ""}
+
+
+def write_notice_data(notice_text):
+    # Generate timestamp in IST
+    timestamp = datetime.now(IST).strftime("%d-%m-%Y %I:%M %p IST")
+    data = {"notice": notice_text, "updated_at": timestamp}
+    NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
+
+
 @app.route("/")
 def home():
     return "School TV Control Server Running"
@@ -107,8 +128,7 @@ def home():
 def admin_login():
     if request.method == "POST":
         password = request.form.get("password", "")
-        # Compare UTF-8 bytes: str inputs with non-ASCII characters
-        # would raise TypeError inside compare_digest.
+        # Raghav's UTF-8 fix included here
         if hmac.compare_digest(password.encode("utf-8"), ADMIN_PASSWORD.encode("utf-8")):
             session.clear()
             session.permanent = True
@@ -121,6 +141,7 @@ def admin_login():
 @app.route("/admin/logout")
 @require_auth
 def admin_logout():
+    # Raghav's logout feature included here
     session.clear()
     return redirect("/admin/login")
 
@@ -145,9 +166,13 @@ def serve_asset(filename):
 
 @app.route("/get_notice")
 def get_notice():
-    if not NOTICE_FILE.exists():
-        return ""
-    return NOTICE_FILE.read_text(encoding="utf-8")
+    data = read_notice_data()
+    response = jsonify(data)
+    # Prevent browser caching
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route("/update_notice", methods=["POST"])
@@ -156,7 +181,7 @@ def update_notice():
     notice = request.form.get("notice", "")
     if not notice.strip():
         return ("Error: Notice cannot be empty", 400)
-    NOTICE_FILE.write_text(notice, encoding="utf-8")
+    write_notice_data(notice.strip())
     return "Success"
 
 
