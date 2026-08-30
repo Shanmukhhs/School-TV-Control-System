@@ -73,3 +73,11 @@ textarea {
 .status.success {
   color: #228b22;
 }
+
+.logout {
+  display: block;
+  margin-top: 28px;
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+}

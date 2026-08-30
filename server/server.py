@@ -107,13 +107,22 @@ def home():
 def admin_login():
     if request.method == "POST":
         password = request.form.get("password", "")
-        if hmac.compare_digest(password, ADMIN_PASSWORD):
+        # Compare UTF-8 bytes: str inputs with non-ASCII characters
+        # would raise TypeError inside compare_digest.
+        if hmac.compare_digest(password.encode("utf-8"), ADMIN_PASSWORD.encode("utf-8")):
             session.clear()
             session.permanent = True
             session["authenticated"] = True
             return redirect("/admin")
         return render_template("login.html", error="Wrong password")
     return render_template("login.html", error=None)
+
+
+@app.route("/admin/logout")
+@require_auth
+def admin_logout():
+    session.clear()
+    return redirect("/admin/login")
 
 
 @app.route("/admin")
@@ -152,9 +161,10 @@ def update_notice():
 
 
 if __name__ == "__main__":
+    display_ip = SERVER_IP if SERVER_IP != "0.0.0.0" else "127.0.0.1"
     print(f"Starting server on {SERVER_IP}:{PORT}")
-    print(f"Admin panel: http://{SERVER_IP}:{PORT}/admin")
-    print(f"Display page: http://{SERVER_IP}:{PORT}/display")
+    print(f"Admin panel: http://{display_ip}:{PORT}/admin")
+    print(f"Display page: http://{display_ip}:{PORT}/display")
     
     try:
         from waitress import serve
