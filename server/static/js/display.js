@@ -5,6 +5,7 @@ const logoEl = document.getElementById("logo");
 
 const POLL_INTERVAL_MS = 5000;
 let previousNotice = "";
+let previousTimestamp = "";
 
 function loadCachedNotice() {
     const cached = localStorage.getItem("cached_notice");
@@ -17,16 +18,16 @@ function loadCachedNotice() {
         
         if (cachedTime) {
             lastUpdatedEl.textContent = "Last Updated: " + cachedTime + " (cached)";
+            previousTimestamp = cachedTime;
         }
         return true;
     }
     return false;
 }
 
-function saveToCache(noticeText) {
-    const timeStr = formatTime(new Date());
+function saveToCache(noticeText, timestamp) {
     localStorage.setItem("cached_notice", noticeText);
-    localStorage.setItem("cached_time", timeStr);
+    localStorage.setItem("cached_time", timestamp);
 }
 
 function setConnected(online) {
@@ -50,38 +51,53 @@ function applyNoticeSize(text) {
     }
 }
 
-function formatTime(date) {
-    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
 async function checkForUpdates() {
     try {
-        const response = await fetch("/get_notice", { cache: "no-store" });
+        // Add cache-busting timestamp to URL to prevent lazy caching
+        const cacheBuster = "?t=" + Date.now();
+        const response = await fetch("/get_notice" + cacheBuster, { 
+            cache: "no-store" 
+        });
+        
         if (!response.ok) {
             throw new Error("HTTP " + response.status);
         }
-
-        const currentNotice = (await response.text()).trim();
+        
+        // Read the JSON response from the server
+        const data = await response.json();
+        const currentNotice = data.notice || "";
+        const serverTimestamp = data.updated_at || "";
+        
         setConnected(true);
-
-        if (currentNotice !== previousNotice) {
+        
+        if (currentNotice !== previousNotice || serverTimestamp !== previousTimestamp) {
             if (currentNotice === "") {
                 noticeEl.textContent = "No Notice Available";
                 noticeEl.classList.remove("size-lg", "size-md", "size-sm");
+                lastUpdatedEl.textContent = "Last Updated: Never";
                 localStorage.removeItem("cached_notice");
                 localStorage.removeItem("cached_time");
             } else {
                 noticeEl.textContent = currentNotice;
                 applyNoticeSize(currentNotice);
-                saveToCache(currentNotice);
+                
+                // Use the server's IST timestamp, not the TV's local time
+                if (serverTimestamp) {
+                    lastUpdatedEl.textContent = "Last Updated: " + serverTimestamp;
+                } else {
+                    lastUpdatedEl.textContent = "Last Updated: Unknown";
+                }
+                
+                saveToCache(currentNotice, serverTimestamp);
             }
-            lastUpdatedEl.textContent = "Last Updated: " + formatTime(new Date());
+            
             previousNotice = currentNotice;
+            previousTimestamp = serverTimestamp;
         }
     } catch (error) {
         setConnected(false);
     }
-
+    
     setTimeout(checkForUpdates, POLL_INTERVAL_MS);
 }
 
