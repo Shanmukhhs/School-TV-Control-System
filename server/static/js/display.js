@@ -10,12 +10,10 @@ let previousTimestamp = "";
 function loadCachedNotice() {
     const cached = localStorage.getItem("cached_notice");
     const cachedTime = localStorage.getItem("cached_time");
-    
     if (cached && cached !== "") {
         noticeEl.textContent = cached;
         applyNoticeSize(cached);
         previousNotice = cached;
-        
         if (cachedTime) {
             lastUpdatedEl.textContent = "Last Updated: " + cachedTime + " (cached)";
             previousTimestamp = cachedTime;
@@ -53,23 +51,17 @@ function applyNoticeSize(text) {
 
 async function checkForUpdates() {
     try {
-        // Add cache-busting timestamp to URL to prevent lazy caching
         const cacheBuster = "?t=" + Date.now();
         const response = await fetch("/get_notice" + cacheBuster, { 
             cache: "no-store" 
         });
-        
         if (!response.ok) {
             throw new Error("HTTP " + response.status);
         }
-        
-        // Read the JSON response from the server
         const data = await response.json();
         const currentNotice = data.notice || "";
         const serverTimestamp = data.updated_at || "";
-        
         setConnected(true);
-        
         if (currentNotice !== previousNotice || serverTimestamp !== previousTimestamp) {
             if (currentNotice === "") {
                 noticeEl.textContent = "No Notice Available";
@@ -80,24 +72,19 @@ async function checkForUpdates() {
             } else {
                 noticeEl.textContent = currentNotice;
                 applyNoticeSize(currentNotice);
-                
-                // Use the server's IST timestamp, not the TV's local time
                 if (serverTimestamp) {
                     lastUpdatedEl.textContent = "Last Updated: " + serverTimestamp;
                 } else {
                     lastUpdatedEl.textContent = "Last Updated: Unknown";
                 }
-                
                 saveToCache(currentNotice, serverTimestamp);
             }
-            
             previousNotice = currentNotice;
             previousTimestamp = serverTimestamp;
         }
     } catch (error) {
         setConnected(false);
     }
-    
     setTimeout(checkForUpdates, POLL_INTERVAL_MS);
 }
 
