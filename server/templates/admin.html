@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nath Valley School - TV Notice Management</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <style>
+    #upload-btn { background:#2e7d32; color:#fff; border:none; padding:12px 24px; font-weight:bold; border-radius:6px; cursor:pointer; }
+    #remove-image-btn { background:#c62828; color:#fff; border:none; padding:12px 24px; font-weight:bold; border-radius:6px; cursor:pointer; margin-left:8px; }
+  </style>
 </head>
 <body>
   <main class="container">
@@ -15,6 +19,13 @@
 
     <button id="send-btn" type="button">SEND NOTICE</button>
 
+    <div style="margin-top:25px; border-top:2px solid #ccc; padding-top:15px;">
+      <label for="image-box">Notice Image (Poster / Photo):</label>
+      <input type="file" id="image-box" accept="image/*" style="display:block; margin:10px 0;">
+      <button id="upload-btn" type="button">UPLOAD IMAGE</button>
+      <button id="remove-image-btn" type="button">REMOVE IMAGE</button>
+    </div>
+
     <p id="status-label" class="status">Status: Ready</p>
     <p id="last-sent-label" class="meta">Last Sent: Never</p>
 
@@ -22,5 +33,40 @@
   </main>
 
   <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+  <script>
+  (function () {
+    const imageBox = document.getElementById("image-box");
+    const uploadBtn = document.getElementById("upload-btn");
+    const removeImageBtn = document.getElementById("remove-image-btn");
+    const statusLabel = document.getElementById("status-label");
+
+    uploadBtn.addEventListener("click", async () => {
+      if (!imageBox.files.length) {
+        statusLabel.textContent = "Status: Choose an image file first!";
+        return;
+      }
+      const formData = new FormData();
+      formData.append("image", imageBox.files[0]);
+      statusLabel.textContent = "Status: Uploading image...";
+      try {
+        const response = await fetch("/upload_image", { method: "POST", body: formData });
+        const result = await response.text();
+        statusLabel.textContent = "Status: " + result;
+      } catch (error) {
+        statusLabel.textContent = "Status: Upload failed!";
+      }
+    });
+
+    removeImageBtn.addEventListener("click", async () => {
+      try {
+        const response = await fetch("/remove_image", { method: "POST" });
+        const result = await response.text();
+        statusLabel.textContent = "Status: " + result;
+      } catch (error) {
+        statusLabel.textContent = "Status: Remove failed!";
+      }
+    });
+  })();
+  </script>
 </body>
 </html>

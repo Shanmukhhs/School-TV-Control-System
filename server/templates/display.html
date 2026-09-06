@@ -5,20 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nath Valley School TV Display</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/display.css') }}">
+  <style>
+    /* Never squish the logo, lines, or footer */
+    body * {
+        flex-shrink: 0;
+    }
+    /* Only the notice text is allowed to shrink/scroll if it gets too tall */
+    #notice-text {
+        flex-shrink: 1;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+    /* Notice image fits INSIDE the board, between the divider lines */
+    #notice-image {
+        display: none;
+        max-width: 90%;
+        max-height: 60vh;
+        object-fit: contain;
+        margin: 15px auto;
+        border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
+
   <header class="header">
     <img id="logo" src="{{ url_for('serve_asset', filename='nath valley logo.png') }}" alt="Nath Valley School logo" class="logo">
   </header>
 
   <hr class="divider">
-
-  <h1 class="title">NOTICE</h1>
-
   <hr class="divider">
 
   <section class="notice-area">
     <p id="notice-text" class="notice">No Notice Available</p>
+    <img id="notice-image" alt="Notice Image">
   </section>
 
   <hr class="divider">
