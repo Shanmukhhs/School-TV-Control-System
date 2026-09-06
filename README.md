@@ -4,7 +4,7 @@ A fully web-based, cloud-connected notice management system for Nath Valley Scho
 Administrators send text notices and event posters from any device, and every
 connected TV updates within seconds.
 
-➡️ [Watch the Web-Based Demo Video showcasing image/poster feature](https://drive.google.com/file/d/1Ti24mn8l3MHF61dEPDj9c6kjnVPeBxXE/view?usp=sharing)
+➡️ [Watch the Web-Based Demo Video showcasing image/poster feature]([https://drive.google.com/file/d/1Ti24mn8l3MHF61dEPDj9c6kjnVPeBxXE/view?usp=sharing](https://drive.google.com/file/d/14yw1KgYRI0k5xfoUJ1GW8Pliclr1M5Tq/view?usp=drive_link))
 
 ---
 
