@@ -1,11 +1,15 @@
 const noticeEl = document.getElementById("notice-text");
+noticeEl.style.whiteSpace = "pre-wrap";
 const connectionEl = document.getElementById("connection-status");
 const lastUpdatedEl = document.getElementById("last-updated");
 const logoEl = document.getElementById("logo");
+const imageEl = document.getElementById("notice-image");
 
 const POLL_INTERVAL_MS = 5000;
 let previousNotice = "";
 let previousTimestamp = "";
+let previousImage = "";
+let previousRev = "";
 
 function loadCachedNotice() {
     const cached = localStorage.getItem("cached_notice");
@@ -38,11 +42,26 @@ function setConnected(online) {
     }
 }
 
+function updateImage(imageName) {
+    if (imageName) {
+        imageEl.src = "/uploads/" + imageName + "?t=" + Date.now();
+        imageEl.style.display = "block";
+        noticeEl.style.display = "none";
+    } else {
+        imageEl.style.display = "none";
+        imageEl.removeAttribute("src");
+        noticeEl.style.display = "";
+    }
+}
+
 function applyNoticeSize(text) {
     noticeEl.classList.remove("size-lg", "size-md", "size-sm");
-    if (text.length < 40) {
+    const lines = text.split("\n").length;
+    const longestLine = Math.max(...text.split("\n").map(line => line.length));
+    noticeEl.style.textAlign = lines > 1 ? "left" : "center";
+    if (lines <= 2 && longestLine < 20) {
         noticeEl.classList.add("size-lg");
-    } else if (text.length < 120) {
+    } else if (lines <= 4 && longestLine < 40) {
         noticeEl.classList.add("size-md");
     } else {
         noticeEl.classList.add("size-sm");
@@ -52,8 +71,8 @@ function applyNoticeSize(text) {
 async function checkForUpdates() {
     try {
         const cacheBuster = "?t=" + Date.now();
-        const response = await fetch("/get_notice" + cacheBuster, { 
-            cache: "no-store" 
+        const response = await fetch("/get_notice" + cacheBuster, {
+            cache: "no-store"
         });
         if (!response.ok) {
             throw new Error("HTTP " + response.status);
@@ -61,8 +80,17 @@ async function checkForUpdates() {
         const data = await response.json();
         const currentNotice = data.notice || "";
         const serverTimestamp = data.updated_at || "";
+        const imageName = data.image || "";
+        const serverRev = String(data.rev || "");
+
         setConnected(true);
-        if (currentNotice !== previousNotice || serverTimestamp !== previousTimestamp) {
+
+        if (imageName !== previousImage || serverRev !== previousRev) {
+            updateImage(imageName);
+            previousImage = imageName;
+        }
+
+        if (currentNotice !== previousNotice || serverRev !== previousRev) {
             if (currentNotice === "") {
                 noticeEl.textContent = "No Notice Available";
                 noticeEl.classList.remove("size-lg", "size-md", "size-sm");
@@ -81,6 +109,7 @@ async function checkForUpdates() {
             }
             previousNotice = currentNotice;
             previousTimestamp = serverTimestamp;
+            previousRev = serverRev;
         }
     } catch (error) {
         setConnected(false);

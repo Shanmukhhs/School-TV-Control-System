@@ -26,9 +26,9 @@ if load_dotenv is not None:
 def get_required_secret(name, disallowed_values):
     value = os.environ.get(name, "").strip()
     if not value:
-        raise RuntimeError(f"Missing required environment variable {name}. Copy .env.example to .env and set a private value.")
+        raise RuntimeError(f"Missing required environment variable {name}.")
     if value.lower() in {item.lower() for item in disallowed_values}:
-        raise RuntimeError(f"Environment variable {name} is still using an unsafe placeholder/old value.")
+        raise RuntimeError(f"Environment variable {name} is still using an unsafe placeholder.")
     return value
 
 def env_flag(name, default=False):
@@ -93,9 +93,16 @@ def read_notice_data():
         pass
     return {"notice": content, "updated_at": ""}
 
+def bump_rev(existing):
+    try:
+        return int(existing.get("rev", 0)) + 1
+    except (TypeError, ValueError):
+        return 1
+
 def write_notice_data(notice_text):
-    timestamp = datetime.now(IST).strftime("%d-%m-%Y %I:%M %p IST")
-    data = {"notice": notice_text, "updated_at": timestamp}
+    timestamp = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
+    existing = read_notice_data()
+    data = {"notice": notice_text, "updated_at": timestamp, "image": existing.get("image", ""), "rev": bump_rev(existing)}
     NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
 
 @app.route("/")
@@ -135,6 +142,47 @@ def serve_asset(filename):
         return ("Asset not found", 404)
     return send_from_directory(ASSETS_DIR, filename)
 
+UPLOAD_DIR = SERVER_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+@app.route("/uploads/<path:filename>")
+def serve_upload(filename):
+    if not UPLOAD_DIR.exists():
+        return ("Not found", 404)
+    return send_from_directory(UPLOAD_DIR, filename)
+
+@app.route("/upload_image", methods=["POST"])
+@require_auth
+def upload_image():
+    if "image" not in request.files:
+        return ("Error: No image selected", 400)
+    file = request.files["image"]
+    if file.filename == "":
+        return ("Error: No image selected", 400)
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return ("Error: Only PNG, JPG, GIF, WEBP images allowed", 400)
+
+    saved_name = "notice_image." + ext
+    file.save(UPLOAD_DIR / saved_name)
+    data = read_notice_data()
+    data["image"] = saved_name
+    data["updated_at"] = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
+    data["rev"] = bump_rev(data)
+    NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
+    return "Success"
+
+@app.route("/remove_image", methods=["POST"])
+@require_auth
+def remove_image():
+    data = read_notice_data()
+    data["image"] = ""
+    data["updated_at"] = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
+    data["rev"] = bump_rev(data)
+    NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
+    return "Success"
+
 @app.route("/get_notice")
 def get_notice():
     data = read_notice_data()
@@ -163,6 +211,5 @@ if __name__ == "__main__":
         print("Running with Waitress (production mode)")
         serve(app, host=SERVER_IP, port=PORT, threads=4)
     except ImportError:
-        print("Waitress not found. Running with Flask dev server (NOT for production)")
-        print("Install waitress with: pip install waitress")
+        print("Waitress not found. Running with Flask dev server.")
         app.run(host=SERVER_IP, port=PORT, debug=False)
