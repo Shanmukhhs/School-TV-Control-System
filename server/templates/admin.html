@@ -8,23 +8,64 @@
   <style>
     #upload-btn { background:#2e7d32; color:#fff; border:none; padding:12px 24px; font-weight:bold; border-radius:6px; cursor:pointer; }
     #remove-image-btn { background:#c62828; color:#fff; border:none; padding:12px 24px; font-weight:bold; border-radius:6px; cursor:pointer; margin-left:8px; }
+    #clear-image-btn { background:#616161; color:#fff; border:none; padding:12px 24px; font-weight:bold; border-radius:6px; cursor:pointer; margin-left:8px; }
+    #preview-clear-image-btn { background:#616161; color:#fff; border:none; padding:10px 28px; font-weight:bold; border-radius:4px; cursor:pointer; display:block; margin:12px auto 0; }
   </style>
 </head>
 <body>
   <main class="container">
     <h1>NATH VALLEY SCHOOL<br>TV Notice Management</h1>
 
-    <label for="notice-box">Notice:</label>
-    <textarea id="notice-box" rows="12" placeholder="Enter notice text..."></textarea>
-
-    <button id="send-btn" type="button">SEND NOTICE</button>
-
-    <div style="margin-top:25px; border-top:2px solid #ccc; padding-top:15px;">
-      <label for="image-box">Notice Image (Poster / Photo):</label>
-      <input type="file" id="image-box" accept="image/*" style="display:block; margin:10px 0;">
-      <button id="upload-btn" type="button">UPLOAD IMAGE</button>
-      <button id="remove-image-btn" type="button">REMOVE IMAGE</button>
+    <div class="tabs" role="tablist">
+      <button id="tab-compose-btn" class="tab active" type="button" role="tab">Compose</button>
+      <button id="tab-preview-btn" class="tab" type="button" role="tab">Preview</button>
     </div>
+
+    <section id="tab-compose" role="tabpanel">
+      <label for="notice-box">Notice:</label>
+      <textarea id="notice-box" rows="12" placeholder="Enter notice text..."></textarea>
+
+      <label for="alignment-box" style="margin-top:12px;">Text alignment (text only):</label>
+      <select id="alignment-box">
+        <option value="left">Left</option>
+        <option value="center" selected>Center</option>
+        <option value="right">Right</option>
+        <option value="justify">Justify</option>
+      </select>
+      <p class="hint">Alignment applies to text notices only — poster images are always centered to fit the TV.</p>
+
+      <button id="send-btn" type="button">SEND NOTICE</button>
+
+      <div style="margin-top:25px; border-top:2px solid #ccc; padding-top:15px;">
+        <label for="image-box">Notice Image (Poster / Photo):</label>
+        <input type="file" id="image-box" accept="image/*" style="display:block; margin:10px 0;">
+        <button id="upload-btn" type="button">UPLOAD IMAGE</button>
+        <button id="remove-image-btn" type="button">REMOVE IMAGE</button>
+        <button id="clear-image-btn" type="button" hidden>CLEAR SELECTION</button>
+      </div>
+    </section>
+
+    <section id="tab-preview" role="tabpanel" hidden>
+      <p class="hint">Preview — how it will look on the TV (/display). Check this before sending.</p>
+      <div class="tv-frame">
+        <div class="tv-header">
+          <img src="{{ url_for('serve_asset', filename='nath valley logo.png') }}" alt="School logo preview" class="tv-logo" onerror="this.style.display='none'">
+        </div>
+        <hr class="tv-divider">
+        <hr class="tv-divider">
+        <div class="tv-board">
+          <p id="preview-text" class="tv-notice">No Notice Available</p>
+          <img id="preview-image" class="tv-image" alt="Notice image preview" hidden>
+        </div>
+        <hr class="tv-divider">
+        <div class="tv-footer">
+          <span>🟢 Connected (preview)</span>
+          <span id="preview-updated" class="meta">Last Updated: (preview — not sent yet)</span>
+        </div>
+      </div>
+      <button id="preview-send-btn" type="button">SEND THIS NOTICE</button>
+      <button id="preview-clear-image-btn" type="button" hidden>REMOVE IMAGE FROM PREVIEW</button>
+    </section>
 
     <p id="status-label" class="status">Status: Ready</p>
     <p id="last-sent-label" class="meta">Last Sent: Never</p>
@@ -38,7 +79,104 @@
     const imageBox = document.getElementById("image-box");
     const uploadBtn = document.getElementById("upload-btn");
     const removeImageBtn = document.getElementById("remove-image-btn");
+    const clearImageBtn = document.getElementById("clear-image-btn");
+    const previewClearImageBtn = document.getElementById("preview-clear-image-btn");
+    const noticeBox = document.getElementById("notice-box");
+    const alignmentBox = document.getElementById("alignment-box");
     const statusLabel = document.getElementById("status-label");
+    const composeTab = document.getElementById("tab-compose");
+    const previewTab = document.getElementById("tab-preview");
+    const composeBtn = document.getElementById("tab-compose-btn");
+    const previewBtn = document.getElementById("tab-preview-btn");
+    const previewText = document.getElementById("preview-text");
+    const previewImage = document.getElementById("preview-image");
+    const previewUpdated = document.getElementById("preview-updated");
+    const previewSendBtn = document.getElementById("preview-send-btn");
+
+    let liveImageName = "";
+    let objectUrl = "";
+
+    function showTab(which) {
+      const isPreview = which === "preview";
+      composeTab.hidden = isPreview;
+      previewTab.hidden = !isPreview;
+      composeBtn.classList.toggle("active", !isPreview);
+      previewBtn.classList.toggle("active", isPreview);
+      if (isPreview) updatePreview();
+    }
+
+    function hasStagedImage() {
+      return !!(imageBox.files && imageBox.files.length);
+    }
+
+    function syncClearButtons() {
+      const staged = hasStagedImage();
+      if (clearImageBtn) clearImageBtn.hidden = !staged;
+      if (previewClearImageBtn) previewClearImageBtn.hidden = !staged;
+    }
+
+    function clearStagedImage() {
+      // Drops the newly picked file so the preview falls back to the
+      // live poster (or text) — no page refresh needed.
+      imageBox.value = "";
+      if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = ""; }
+      updatePreview();
+    }
+
+    function updatePreview() {
+      syncClearButtons();
+      const text = noticeBox.value.trim() || "No Notice Available";
+      previewText.textContent = text;
+      previewText.style.textAlign = alignmentBox ? alignmentBox.value : "center";
+
+      if (imageBox.files && imageBox.files.length) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(imageBox.files[0]);
+        previewImage.src = objectUrl;
+        previewImage.hidden = false;
+        previewText.style.display = "none";
+      } else if (liveImageName) {
+        previewImage.src = "/uploads/" + liveImageName + "?t=" + Date.now();
+        previewImage.hidden = false;
+        previewText.style.display = "none";
+      } else {
+        previewImage.hidden = true;
+        previewImage.removeAttribute("src");
+        previewText.style.display = "";
+      }
+      previewUpdated.textContent = "Last Updated: (preview — not sent yet)";
+    }
+
+    async function loadLiveState() {
+      try {
+        const res = await fetch("/get_notice?t=" + Date.now(), { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        liveImageName = data.image || "";
+        if (alignmentBox && data.alignment) alignmentBox.value = data.alignment;
+        if (!noticeBox.value && data.notice) {
+          // Don't overwrite a draft — preview falls back to live text only when draft is empty.
+        }
+      } catch (e) { /* preview works offline from draft */ }
+    }
+
+    composeBtn.addEventListener("click", () => showTab("compose"));
+    previewBtn.addEventListener("click", () => showTab("preview"));
+    if (noticeBox) noticeBox.addEventListener("input", () => { if (!previewTab.hidden) updatePreview(); });
+    if (alignmentBox) alignmentBox.addEventListener("change", () => { if (!previewTab.hidden) updatePreview(); });
+    if (imageBox) imageBox.addEventListener("change", () => {
+      // A newly picked file takes precedence in the preview, but the
+      // live poster name is kept so clearing the selection restores it.
+      syncClearButtons();
+      if (!previewTab.hidden) updatePreview();
+    });
+    if (clearImageBtn) clearImageBtn.addEventListener("click", clearStagedImage);
+    if (previewClearImageBtn) previewClearImageBtn.addEventListener("click", clearStagedImage);
+    if (previewSendBtn) previewSendBtn.addEventListener("click", () => {
+      showTab("compose");
+      const sendBtn = document.getElementById("send-btn");
+      if (sendBtn) sendBtn.click();
+    });
 
     uploadBtn.addEventListener("click", async () => {
       if (!imageBox.files.length) {
@@ -52,6 +190,12 @@
         const response = await fetch("/upload_image", { method: "POST", body: formData });
         const result = await response.text();
         statusLabel.textContent = "Status: " + result;
+        if (response.ok) {
+          await loadLiveState();
+          imageBox.value = "";
+          syncClearButtons();
+          if (!previewTab.hidden) updatePreview();
+        }
       } catch (error) {
         statusLabel.textContent = "Status: Upload failed!";
       }
@@ -62,10 +206,16 @@
         const response = await fetch("/remove_image", { method: "POST" });
         const result = await response.text();
         statusLabel.textContent = "Status: " + result;
+        if (response.ok) {
+          liveImageName = "";
+          if (!previewTab.hidden) updatePreview();
+        }
       } catch (error) {
         statusLabel.textContent = "Status: Remove failed!";
       }
     });
+
+    loadLiveState();
   })();
   </script>
 </body>

@@ -10,14 +10,24 @@ let previousNotice = "";
 let previousTimestamp = "";
 let previousImage = "";
 let previousRev = "";
+let previousAlignment = "center";
+
+const VALID_ALIGNMENTS = new Set(["left", "center", "right", "justify"]);
+
+function normalizeAlignment(value) {
+    const cleaned = (value || "").toLowerCase();
+    return VALID_ALIGNMENTS.has(cleaned) ? cleaned : "center";
+}
 
 function loadCachedNotice() {
     const cached = localStorage.getItem("cached_notice");
     const cachedTime = localStorage.getItem("cached_time");
+    const cachedAlignment = normalizeAlignment(localStorage.getItem("cached_alignment"));
     if (cached && cached !== "") {
         noticeEl.textContent = cached;
-        applyNoticeSize(cached);
+        applyNoticeSize(cached, cachedAlignment);
         previousNotice = cached;
+        previousAlignment = cachedAlignment;
         if (cachedTime) {
             lastUpdatedEl.textContent = "Last Updated: " + cachedTime + " (cached)";
             previousTimestamp = cachedTime;
@@ -27,9 +37,10 @@ function loadCachedNotice() {
     return false;
 }
 
-function saveToCache(noticeText, timestamp) {
+function saveToCache(noticeText, timestamp, alignment) {
     localStorage.setItem("cached_notice", noticeText);
     localStorage.setItem("cached_time", timestamp);
+    localStorage.setItem("cached_alignment", normalizeAlignment(alignment));
 }
 
 function setConnected(online) {
@@ -54,11 +65,12 @@ function updateImage(imageName) {
     }
 }
 
-function applyNoticeSize(text) {
+function applyNoticeSize(text, alignment) {
     noticeEl.classList.remove("size-lg", "size-md", "size-sm");
     const lines = text.split("\n").length;
     const longestLine = Math.max(...text.split("\n").map(line => line.length));
-    noticeEl.style.textAlign = lines > 1 ? "left" : "center";
+    // User-chosen alignment applies to text only (images ignore it).
+    noticeEl.style.textAlign = normalizeAlignment(alignment);
     if (lines <= 2 && longestLine < 20) {
         noticeEl.classList.add("size-lg");
     } else if (lines <= 4 && longestLine < 40) {
@@ -82,6 +94,7 @@ async function checkForUpdates() {
         const serverTimestamp = data.updated_at || "";
         const imageName = data.image || "";
         const serverRev = String(data.rev || "");
+        const serverAlignment = normalizeAlignment(data.alignment);
 
         setConnected(true);
 
@@ -90,26 +103,29 @@ async function checkForUpdates() {
             previousImage = imageName;
         }
 
-        if (currentNotice !== previousNotice || serverRev !== previousRev) {
+        if (currentNotice !== previousNotice || serverRev !== previousRev || serverAlignment !== previousAlignment) {
             if (currentNotice === "") {
                 noticeEl.textContent = "No Notice Available";
                 noticeEl.classList.remove("size-lg", "size-md", "size-sm");
+                noticeEl.style.textAlign = "center";
                 lastUpdatedEl.textContent = "Last Updated: Never";
                 localStorage.removeItem("cached_notice");
                 localStorage.removeItem("cached_time");
+                localStorage.removeItem("cached_alignment");
             } else {
                 noticeEl.textContent = currentNotice;
-                applyNoticeSize(currentNotice);
+                applyNoticeSize(currentNotice, serverAlignment);
                 if (serverTimestamp) {
                     lastUpdatedEl.textContent = "Last Updated: " + serverTimestamp;
                 } else {
                     lastUpdatedEl.textContent = "Last Updated: Unknown";
                 }
-                saveToCache(currentNotice, serverTimestamp);
+                saveToCache(currentNotice, serverTimestamp, serverAlignment);
             }
             previousNotice = currentNotice;
             previousTimestamp = serverTimestamp;
             previousRev = serverRev;
+            previousAlignment = serverAlignment;
         }
     } catch (error) {
         setConnected(false);

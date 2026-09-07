@@ -4,6 +4,7 @@ from pathlib import Path
 import hmac
 import json
 import os
+import secrets
 
 from flask import Flask, request, render_template, send_from_directory, session, redirect, jsonify
 
@@ -18,6 +19,13 @@ ASSETS_DIR = PROJECT_ROOT / "Assets"
 NOTICE_FILE = SERVER_DIR / "notice.txt"
 
 IST = timezone(timedelta(hours=5, minutes=30))
+
+ALLOWED_ALIGNMENTS = {"left", "center", "right", "justify"}
+
+
+def normalize_alignment(value):
+    alignment = (value or "").strip().lower()
+    return alignment if alignment in ALLOWED_ALIGNMENTS else "center"
 
 if load_dotenv is not None:
     load_dotenv(PROJECT_ROOT / ".env")
@@ -62,6 +70,11 @@ app.config.update(
 )
 
 CONFIG_PATH = PROJECT_ROOT / "Receiver" / "receiver_config.json"
+
+# Random ID for this server run. Stored in the admin session at login so a
+# server restart invalidates old sessions and asks for the password again.
+SERVER_INSTANCE_ID = secrets.token_hex(16)
+
 if CONFIG_PATH.exists():
     with open(CONFIG_PATH, "r") as f:
         config = json.load(f)
@@ -74,24 +87,27 @@ else:
 def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get("authenticated"):
+        if not session.get("authenticated") or session.get("instance") != SERVER_INSTANCE_ID:
+            session.clear()
             return redirect("/admin/login")
         return f(*args, **kwargs)
     return decorated_function
 
 def read_notice_data():
     if not NOTICE_FILE.exists():
-        return {"notice": "", "updated_at": ""}
+        return {"notice": "", "updated_at": "", "alignment": "center"}
     content = NOTICE_FILE.read_text(encoding="utf-8").strip()
     if not content:
-        return {"notice": "", "updated_at": ""}
+        return {"notice": "", "updated_at": "", "alignment": "center"}
     try:
         data = json.loads(content)
         if "notice" in data and "updated_at" in data:
+            if data.get("alignment") not in ALLOWED_ALIGNMENTS:
+                data["alignment"] = "center"
             return data
     except json.JSONDecodeError:
         pass
-    return {"notice": content, "updated_at": ""}
+    return {"notice": content, "updated_at": "", "alignment": "center"}
 
 def bump_rev(existing):
     try:
@@ -99,10 +115,10 @@ def bump_rev(existing):
     except (TypeError, ValueError):
         return 1
 
-def write_notice_data(notice_text):
+def write_notice_data(notice_text, alignment="center"):
     timestamp = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
     existing = read_notice_data()
-    data = {"notice": notice_text, "updated_at": timestamp, "image": existing.get("image", ""), "rev": bump_rev(existing)}
+    data = {"notice": notice_text, "updated_at": timestamp, "image": existing.get("image", ""), "alignment": normalize_alignment(alignment), "rev": bump_rev(existing)}
     NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
 
 @app.route("/")
@@ -117,6 +133,7 @@ def admin_login():
             session.clear()
             session.permanent = True
             session["authenticated"] = True
+            session["instance"] = SERVER_INSTANCE_ID
             return redirect("/admin")
         return render_template("login.html", error="Wrong password")
     return render_template("login.html", error=None)
@@ -168,6 +185,7 @@ def upload_image():
     file.save(UPLOAD_DIR / saved_name)
     data = read_notice_data()
     data["image"] = saved_name
+    data["alignment"] = normalize_alignment(data.get("alignment", "center"))
     data["updated_at"] = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
     data["rev"] = bump_rev(data)
     NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
@@ -178,6 +196,7 @@ def upload_image():
 def remove_image():
     data = read_notice_data()
     data["image"] = ""
+    data["alignment"] = normalize_alignment(data.get("alignment", "center"))
     data["updated_at"] = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
     data["rev"] = bump_rev(data)
     NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
@@ -198,7 +217,8 @@ def update_notice():
     notice = request.form.get("notice", "")
     if not notice.strip():
         return ("Error: Notice cannot be empty", 400)
-    write_notice_data(notice.strip())
+    alignment = normalize_alignment(request.form.get("alignment", "center"))
+    write_notice_data(notice.strip(), alignment)
     return "Success"
 
 if __name__ == "__main__":
