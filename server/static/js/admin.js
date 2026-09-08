@@ -2,6 +2,7 @@ const noticeBox = document.getElementById("notice-box");
 const sendBtn = document.getElementById("send-btn");
 const statusLabel = document.getElementById("status-label");
 const lastSentLabel = document.getElementById("last-sent-label");
+const alignmentBox = document.getElementById("alignment-box");
 
 function setStatus(text, type) {
   statusLabel.textContent = `Status: ${text}`;
@@ -24,7 +25,8 @@ async function sendNotice() {
   setStatus("Sending...");
 
   try {
-    const body = new URLSearchParams({ notice });
+    const alignment = alignmentBox ? alignmentBox.value : "center";
+    const body = new URLSearchParams({ notice, alignment });
     const response = await fetch("/update_notice", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
