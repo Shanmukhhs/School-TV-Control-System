@@ -34,6 +34,12 @@
       </select>
       <p class="hint">Alignment applies to text notices only — poster images are always centered to fit the TV.</p>
 
+      <label for="publish-at-box" style="margin-top:12px;">Publish at (optional)</label>
+      <input type="datetime-local" id="publish-at-box" style="display:block; width:100%; padding:10px 12px; font-size:1rem; font-family:inherit; border:1px solid #ccc; border-radius:4px; background:#fff;">
+      <label for="expire-at-box" style="margin-top:12px;">Expire at (optional)</label>
+      <input type="datetime-local" id="expire-at-box" style="display:block; width:100%; padding:10px 12px; font-size:1rem; font-family:inherit; border:1px solid #ccc; border-radius:4px; background:#fff;">
+      <p class="hint">Leave blank to publish immediately / never expire. Times are IST.</p>
+
       <button id="send-btn" type="button">SEND NOTICE</button>
 
       <div style="margin-top:25px; border-top:2px solid #ccc; padding-top:15px;">
@@ -68,6 +74,7 @@
     </section>
 
     <p id="status-label" class="status">Status: Ready</p>
+    <p id="schedule-label" class="meta">Schedule: none</p>
     <p id="last-sent-label" class="meta">Last Sent: Never</p>
 
     <a id="logout-link" class="logout" href="/admin/logout">Log out</a>
