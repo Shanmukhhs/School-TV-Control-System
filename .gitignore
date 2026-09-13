@@ -10,3 +10,4 @@ server/.env.*
 __pycache__/
 *.py[cod]
 .pytest_cache/
+server/uploads/
