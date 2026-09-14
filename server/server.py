@@ -56,6 +56,16 @@ def is_notice_active(data, now_ist):
             return False
     return True
 
+
+def is_future_publish(publish_at):
+    text = (publish_at or "").strip()
+    if not text:
+        return False
+    publish_dt = parse_schedule_time(text)
+    if publish_dt is None:
+        return False
+    return datetime.now(IST) < publish_dt
+
 if load_dotenv is not None:
     load_dotenv(PROJECT_ROOT / ".env")
     load_dotenv(SERVER_DIR / ".env")
@@ -122,12 +132,16 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated_function
 
+PENDING_FIELDS = ("pending_notice", "pending_image", "pending_alignment", "pending_publish_at", "pending_expire_at")
+
+
 def read_notice_data():
+    empty = {"notice": "", "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": "", "pending_notice": "", "pending_image": "", "pending_alignment": "", "pending_publish_at": "", "pending_expire_at": ""}
     if not NOTICE_FILE.exists():
-        return {"notice": "", "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": ""}
+        return dict(empty)
     content = NOTICE_FILE.read_text(encoding="utf-8").strip()
     if not content:
-        return {"notice": "", "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": ""}
+        return dict(empty)
     try:
         data = json.loads(content)
         if "notice" in data and "updated_at" in data:
@@ -137,10 +151,13 @@ def read_notice_data():
                 data["publish_at"] = ""
             if not isinstance(data.get("expire_at"), str):
                 data["expire_at"] = ""
+            for key in PENDING_FIELDS:
+                if not isinstance(data.get(key), str):
+                    data[key] = ""
             return data
     except json.JSONDecodeError:
         pass
-    return {"notice": content, "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": ""}
+    return {"notice": content, "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": "", "pending_notice": "", "pending_image": "", "pending_alignment": "", "pending_publish_at": "", "pending_expire_at": ""}
 
 def bump_rev(existing):
     try:
@@ -152,6 +169,9 @@ def write_notice_data(notice_text, alignment="center", publish_at="", expire_at=
     timestamp = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
     existing = read_notice_data()
     data = {"notice": notice_text, "updated_at": timestamp, "image": existing.get("image", ""), "alignment": normalize_alignment(alignment), "rev": bump_rev(existing), "publish_at": (publish_at or "").strip(), "expire_at": (expire_at or "").strip()}
+    for key in PENDING_FIELDS:
+        value = existing.get(key, "")
+        data[key] = value if isinstance(value, str) else ""
     NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
 
 @app.route("/")
@@ -196,6 +216,74 @@ UPLOAD_DIR = SERVER_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
+
+def clear_pending_fields(data):
+    for key in PENDING_FIELDS:
+        data[key] = ""
+    return data
+
+
+def delete_pending_image_file(except_name=""):
+    kept = (except_name or "").strip()
+    try:
+        entries = list(UPLOAD_DIR.glob("pending_notice_image.*"))
+    except OSError:
+        return
+    for entry in entries:
+        if entry.name == kept or not entry.is_file():
+            continue
+        try:
+            entry.unlink()
+        except OSError:
+            pass
+
+
+def promote_pending_notice(data, now_ist):
+    pending_publish_at = data.get("pending_publish_at", "")
+    if not isinstance(pending_publish_at, str):
+        pending_publish_at = ""
+    pending_publish_at = pending_publish_at.strip()
+    if not pending_publish_at:
+        return False
+    publish_dt = parse_schedule_time(pending_publish_at)
+    if publish_dt is None or now_ist < publish_dt:
+        return False
+    data["notice"] = data.get("pending_notice", "") if isinstance(data.get("pending_notice"), str) else ""
+    pending_alignment = data.get("pending_alignment", "")
+    data["alignment"] = pending_alignment if isinstance(pending_alignment, str) else ""
+    pending_image = data.get("pending_image", "")
+    if not isinstance(pending_image, str):
+        pending_image = ""
+    pending_image = pending_image.strip()
+    if pending_image:
+        source = UPLOAD_DIR / pending_image
+        if source.is_file():
+            live_name = "notice_image." + pending_image.rsplit(".", 1)[-1].lower()
+            target = UPLOAD_DIR / live_name
+            try:
+                if target != source:
+                    try:
+                        if target.exists():
+                            target.unlink()
+                    except OSError:
+                        pass
+                    os.replace(source, target)
+            except OSError:
+                pass
+            data["image"] = live_name
+        else:
+            data["image"] = ""
+    else:
+        data["image"] = ""
+    data["publish_at"] = pending_publish_at
+    expire_at = data.get("pending_expire_at", "")
+    data["expire_at"] = expire_at if isinstance(expire_at, str) else ""
+    clear_pending_fields(data)
+    data["updated_at"] = now_ist.strftime("%d-%m-%Y %I:%M:%S %p IST")
+    data["rev"] = bump_rev(data)
+    NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
+    return True
+
 @app.route("/uploads/<path:filename>")
 def serve_upload(filename):
     if not UPLOAD_DIR.exists():
@@ -231,6 +319,17 @@ def upload_image():
             return ("Error: expiry must be after publish time", 400)
 
     saved_name = "notice_image." + ext
+    if is_future_publish(publish_at):
+        pending_name = "pending_notice_image." + ext
+        file.save(UPLOAD_DIR / pending_name)
+        delete_pending_image_file(except_name=pending_name)
+        data = read_notice_data()
+        data["pending_image"] = pending_name
+        data["pending_publish_at"] = publish_at
+        data["pending_expire_at"] = expire_at
+        NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
+        return "Success"
+
     file.save(UPLOAD_DIR / saved_name)
     data = read_notice_data()
     data["image"] = saved_name
@@ -259,11 +358,18 @@ def get_notice():
     data = read_notice_data()
     data.setdefault("publish_at", "")
     data.setdefault("expire_at", "")
+    for key in PENDING_FIELDS:
+        data.setdefault(key, "")
     if not isinstance(data.get("publish_at"), str):
         data["publish_at"] = ""
     if not isinstance(data.get("expire_at"), str):
         data["expire_at"] = ""
-    active = is_notice_active(data, datetime.now(IST))
+    for key in PENDING_FIELDS:
+        if not isinstance(data.get(key), str):
+            data[key] = ""
+    now_ist = datetime.now(IST)
+    promote_pending_notice(data, now_ist)
+    active = is_notice_active(data, now_ist)
     data["active"] = active
     if not active:
         data["notice"] = ""
@@ -296,7 +402,36 @@ def update_notice():
         expire_dt = parse_schedule_time(expire_at)
         if publish_dt is not None and expire_dt is not None and not expire_dt > publish_dt:
             return ("Error: expiry must be after publish time", 400)
+    if is_future_publish(publish_at):
+        data = read_notice_data()
+        data["pending_notice"] = notice.strip()
+        data["pending_alignment"] = alignment
+        data["pending_publish_at"] = publish_at
+        data["pending_expire_at"] = expire_at
+        NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
+        return "Success"
     write_notice_data(notice.strip(), alignment, publish_at, expire_at)
+    return "Success"
+
+@app.route("/cancel_scheduled", methods=["POST"])
+@require_auth
+def cancel_scheduled():
+    data = read_notice_data()
+    pending_image = data.get("pending_image", "")
+    if not isinstance(pending_image, str):
+        pending_image = ""
+    clear_pending_fields(data)
+    data["rev"] = bump_rev(data)
+    NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
+    if pending_image.strip():
+        candidate = UPLOAD_DIR / pending_image.strip()
+        try:
+            if candidate.is_file():
+                candidate.unlink()
+        except OSError:
+            pass
+    else:
+        delete_pending_image_file()
     return "Success"
 
 if __name__ == "__main__":

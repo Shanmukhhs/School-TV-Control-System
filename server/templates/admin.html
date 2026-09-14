@@ -75,6 +75,8 @@
 
     <p id="status-label" class="status">Status: Ready</p>
     <p id="schedule-label" class="meta">Schedule: none</p>
+    <p id="pending-label" class="meta" hidden></p>
+    <button id="cancel-scheduled-btn" type="button" hidden>CANCEL SCHEDULED</button>
     <p id="last-sent-label" class="meta">Last Sent: Never</p>
 
     <a id="logout-link" class="logout" href="/admin/logout">Log out</a>
@@ -210,6 +212,7 @@
           if (publishAtBox) publishAtBox.value = "";
           if (expireAtBox) expireAtBox.value = "";
           if (typeof refreshScheduleLabel === "function") refreshScheduleLabel();
+          if (typeof refreshPendingLabel === "function") refreshPendingLabel();
           syncClearButtons();
           if (!previewTab.hidden) updatePreview();
         }
