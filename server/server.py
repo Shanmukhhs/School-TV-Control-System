@@ -4,6 +4,7 @@ from pathlib import Path
 import hmac
 import json
 import os
+import re
 import secrets
 
 from flask import Flask, request, render_template, send_from_directory, session, redirect, jsonify
@@ -26,6 +27,34 @@ ALLOWED_ALIGNMENTS = {"left", "center", "right", "justify"}
 def normalize_alignment(value):
     alignment = (value or "").strip().lower()
     return alignment if alignment in ALLOWED_ALIGNMENTS else "center"
+
+SCHEDULE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
+
+
+def parse_schedule_time(value):
+    text = (value or "").strip()
+    if not text:
+        return None
+    if not SCHEDULE_RE.match(text):
+        return None
+    try:
+        return datetime.strptime(text, "%Y-%m-%dT%H:%M").replace(tzinfo=IST)
+    except ValueError:
+        return None
+
+
+def is_notice_active(data, now_ist):
+    publish_at = (data.get("publish_at") or "").strip() if isinstance(data, dict) else ""
+    expire_at = (data.get("expire_at") or "").strip() if isinstance(data, dict) else ""
+    if publish_at:
+        publish_dt = parse_schedule_time(publish_at)
+        if publish_dt is not None and now_ist < publish_dt:
+            return False
+    if expire_at:
+        expire_dt = parse_schedule_time(expire_at)
+        if expire_dt is not None and now_ist >= expire_dt:
+            return False
+    return True
 
 if load_dotenv is not None:
     load_dotenv(PROJECT_ROOT / ".env")
@@ -95,19 +124,23 @@ def require_auth(f):
 
 def read_notice_data():
     if not NOTICE_FILE.exists():
-        return {"notice": "", "updated_at": "", "alignment": "center"}
+        return {"notice": "", "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": ""}
     content = NOTICE_FILE.read_text(encoding="utf-8").strip()
     if not content:
-        return {"notice": "", "updated_at": "", "alignment": "center"}
+        return {"notice": "", "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": ""}
     try:
         data = json.loads(content)
         if "notice" in data and "updated_at" in data:
             if data.get("alignment") not in ALLOWED_ALIGNMENTS:
                 data["alignment"] = "center"
+            if not isinstance(data.get("publish_at"), str):
+                data["publish_at"] = ""
+            if not isinstance(data.get("expire_at"), str):
+                data["expire_at"] = ""
             return data
     except json.JSONDecodeError:
         pass
-    return {"notice": content, "updated_at": "", "alignment": "center"}
+    return {"notice": content, "updated_at": "", "alignment": "center", "publish_at": "", "expire_at": ""}
 
 def bump_rev(existing):
     try:
@@ -115,10 +148,10 @@ def bump_rev(existing):
     except (TypeError, ValueError):
         return 1
 
-def write_notice_data(notice_text, alignment="center"):
+def write_notice_data(notice_text, alignment="center", publish_at="", expire_at=""):
     timestamp = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
     existing = read_notice_data()
-    data = {"notice": notice_text, "updated_at": timestamp, "image": existing.get("image", ""), "alignment": normalize_alignment(alignment), "rev": bump_rev(existing)}
+    data = {"notice": notice_text, "updated_at": timestamp, "image": existing.get("image", ""), "alignment": normalize_alignment(alignment), "rev": bump_rev(existing), "publish_at": (publish_at or "").strip(), "expire_at": (expire_at or "").strip()}
     NOTICE_FILE.write_text(json.dumps(data), encoding="utf-8")
 
 @app.route("/")
@@ -205,6 +238,17 @@ def remove_image():
 @app.route("/get_notice")
 def get_notice():
     data = read_notice_data()
+    data.setdefault("publish_at", "")
+    data.setdefault("expire_at", "")
+    if not isinstance(data.get("publish_at"), str):
+        data["publish_at"] = ""
+    if not isinstance(data.get("expire_at"), str):
+        data["expire_at"] = ""
+    active = is_notice_active(data, datetime.now(IST))
+    data["active"] = active
+    if not active:
+        data["notice"] = ""
+        data["image"] = ""
     response = jsonify(data)
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
@@ -218,7 +262,22 @@ def update_notice():
     if not notice.strip():
         return ("Error: Notice cannot be empty", 400)
     alignment = normalize_alignment(request.form.get("alignment", "center"))
-    write_notice_data(notice.strip(), alignment)
+    publish_at = (request.form.get("publish_at") or "").strip()
+    expire_at = (request.form.get("expire_at") or "").strip()
+    if publish_at and not SCHEDULE_RE.match(publish_at):
+        return ("Error: invalid publish_at format (use YYYY-MM-DDTHH:MM)", 400)
+    if expire_at and not SCHEDULE_RE.match(expire_at):
+        return ("Error: invalid expire_at format (use YYYY-MM-DDTHH:MM)", 400)
+    if publish_at and parse_schedule_time(publish_at) is None:
+        return ("Error: invalid publish_at time", 400)
+    if expire_at and parse_schedule_time(expire_at) is None:
+        return ("Error: invalid expire_at time", 400)
+    if publish_at and expire_at:
+        publish_dt = parse_schedule_time(publish_at)
+        expire_dt = parse_schedule_time(expire_at)
+        if publish_dt is not None and expire_dt is not None and not expire_dt > publish_dt:
+            return ("Error: expiry must be after publish time", 400)
+    write_notice_data(notice.strip(), alignment, publish_at, expire_at)
     return "Success"
 
 if __name__ == "__main__":
