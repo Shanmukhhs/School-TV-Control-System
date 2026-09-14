@@ -214,10 +214,29 @@ def upload_image():
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         return ("Error: Only PNG, JPG, GIF, WEBP images allowed", 400)
 
+    publish_at = (request.form.get("publish_at") or "").strip()
+    expire_at = (request.form.get("expire_at") or "").strip()
+    if publish_at and not SCHEDULE_RE.match(publish_at):
+        return ("Error: invalid publish_at format (use YYYY-MM-DDTHH:MM)", 400)
+    if expire_at and not SCHEDULE_RE.match(expire_at):
+        return ("Error: invalid expire_at format (use YYYY-MM-DDTHH:MM)", 400)
+    if publish_at and parse_schedule_time(publish_at) is None:
+        return ("Error: invalid publish_at time", 400)
+    if expire_at and parse_schedule_time(expire_at) is None:
+        return ("Error: invalid expire_at time", 400)
+    if publish_at and expire_at:
+        publish_dt = parse_schedule_time(publish_at)
+        expire_dt = parse_schedule_time(expire_at)
+        if publish_dt is not None and expire_dt is not None and not expire_dt > publish_dt:
+            return ("Error: expiry must be after publish time", 400)
+
     saved_name = "notice_image." + ext
     file.save(UPLOAD_DIR / saved_name)
     data = read_notice_data()
     data["image"] = saved_name
+    if "publish_at" in request.form or "expire_at" in request.form:
+        data["publish_at"] = publish_at
+        data["expire_at"] = expire_at
     data["alignment"] = normalize_alignment(data.get("alignment", "center"))
     data["updated_at"] = datetime.now(IST).strftime("%d-%m-%Y %I:%M:%S %p IST")
     data["rev"] = bump_rev(data)
