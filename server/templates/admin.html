@@ -75,6 +75,8 @@
 
     <p id="status-label" class="status">Status: Ready</p>
     <p id="schedule-label" class="meta">Schedule: none</p>
+    <p id="pending-label" class="meta" hidden></p>
+    <button id="cancel-scheduled-btn" type="button" hidden>CANCEL SCHEDULED</button>
     <p id="last-sent-label" class="meta">Last Sent: Never</p>
 
     <a id="logout-link" class="logout" href="/admin/logout">Log out</a>
@@ -90,6 +92,8 @@
     const previewClearImageBtn = document.getElementById("preview-clear-image-btn");
     const noticeBox = document.getElementById("notice-box");
     const alignmentBox = document.getElementById("alignment-box");
+    const publishAtBox = document.getElementById("publish-at-box");
+    const expireAtBox = document.getElementById("expire-at-box");
     const statusLabel = document.getElementById("status-label");
     const composeTab = document.getElementById("tab-compose");
     const previewTab = document.getElementById("tab-preview");
@@ -188,23 +192,33 @@
     uploadBtn.addEventListener("click", async () => {
       if (!imageBox.files.length) {
         statusLabel.textContent = "Status: Choose an image file first!";
+        statusLabel.className = "status error";
         return;
       }
       const formData = new FormData();
       formData.append("image", imageBox.files[0]);
+      formData.append("publish_at", publishAtBox ? publishAtBox.value : "");
+      formData.append("expire_at", expireAtBox ? expireAtBox.value : "");
       statusLabel.textContent = "Status: Uploading image...";
+      statusLabel.className = "status";
       try {
         const response = await fetch("/upload_image", { method: "POST", body: formData });
         const result = await response.text();
         statusLabel.textContent = "Status: " + result;
+        statusLabel.className = "status " + (response.ok ? "success" : "error");
         if (response.ok) {
           await loadLiveState();
           imageBox.value = "";
+          if (publishAtBox) publishAtBox.value = "";
+          if (expireAtBox) expireAtBox.value = "";
+          if (typeof refreshScheduleLabel === "function") refreshScheduleLabel();
+          if (typeof refreshPendingLabel === "function") refreshPendingLabel();
           syncClearButtons();
           if (!previewTab.hidden) updatePreview();
         }
       } catch (error) {
         statusLabel.textContent = "Status: Upload failed!";
+        statusLabel.className = "status error";
       }
     });
 

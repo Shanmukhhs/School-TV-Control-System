@@ -4,8 +4,6 @@ A fully web-based, cloud-connected notice management system for Nath Valley Scho
 Administrators send text notices and event posters from any device, and every
 connected TV updates within seconds.
 
-➡️ [Watch the Web-Based Demo Video showcasing image/poster feature](https://drive.google.com/file/d/14yw1KgYRI0k5xfoUJ1GW8Pliclr1M5Tq/view?usp=sharing)
-
 ---
 
 ## ✅ Features
@@ -16,12 +14,20 @@ connected TV updates within seconds.
 - ✅ Line breaks preserved on the TV; text auto-sized & aligned by content
 - ✅ Efficient 5-second polling — display updates only when something changes
 - ✅ Server-generated **Indian Standard Time (IST, UTC+5:30)** timestamps
+- ✅ Admin-chosen text alignment (left/center/right/justify)
+- ✅ Live Preview tab that shows exactly how the TV will render the notice/poster
 
 **Images / Posters**
 - ✅ Upload posters & photos from the admin panel (PNG, JPG, JPEG, GIF, WEBP)
 - ✅ Posters appear inside the notice-board frame on every TV
 - ✅ Instant live swap — a new poster replaces the old one on all displays within 5 seconds
 - ✅ One-click "Remove Image" returns to text notices
+
+**Scheduling**
+- ✅ Scheduled notices with Publish at / Expire at (IST, enforced server-side)
+- ✅ Hold & Queue: scheduled content waits backstage while the live content keeps showing; TVs flip automatically at the exact publish moment - no reload needed
+- ✅ One-step scheduled poster upload
+- ✅ One-click "Cancel scheduled" for the waiting content
 
 **Reliability**
 - ✅ Production WSGI server (Waitress) handles many TVs polling simultaneously
@@ -35,6 +41,8 @@ connected TV updates within seconds.
 - ✅ UTF-8-safe password handling (non-ASCII passwords supported)
 - ✅ Session expiration + secure cookie flags (`HTTPONLY`, `SAMESITE`) + one-click logout
 - ✅ Secrets live in a local `.env` file (never committed to Git)
+- ✅ Show/hide password toggle on the login page
+- ✅ Server-instance session invalidation (restarting the server logs out all admin sessions)
 
 **Deployment & Teamwork**
 - ✅ Runs locally on a LAN *or* in the cloud (PythonAnywhere) with zero code changes
@@ -80,16 +88,16 @@ be sent from anywhere (phone, home, staff room).
 
 ---
 
-## 🖼️ How Poster Mode Works
+## 🖼️ How Content Sync Works
 
-1. Admin uploads an image → the server saves it in `server/uploads/` and records its name plus a fresh IST timestamp in `server/notice.txt` (JSON format).
+1. Every change (text, poster, schedule, alignment) bumps a `rev` number stored in `server/notice.txt` (JSON format) with a fresh IST timestamp; posters are saved in `server/uploads/`.
 2. Every display polls `GET /get_notice` every 5 seconds with a cache-busting URL.
-3. If the image name **or** the timestamp changed, the display reloads the poster instantly.
+3. If the notice text, image name **or** the `rev` number changed, the display refreshes instantly.
 4. Removing the image restores the text notice automatically.
 
 ### Notice data format (`server/notice.txt`)
 ```json
-{"notice": "Sports Day on Friday!", "updated_at": "05-09-2026 10:26 PM IST", "image": "notice_image.jpg"}
+{"notice": "Sports Day on Friday!", "updated_at": "15-09-2026 10:26:05 AM IST", "image": "notice_image.jpg", "alignment": "center", "rev": 12, "publish_at": "", "expire_at": ""}
 ```
 Old plain-text notice files are still read via an automatic fallback.
 
@@ -114,8 +122,9 @@ Cloud Server (PythonAnywhere) — Waitress + Flask
  ├── /admin          send notices + upload posters
  ├── /admin/logout   end session
  ├── /display        TV view (any browser, F11 fullscreen)
- ├── /get_notice     JSON: notice + IST timestamp + image name
+ ├── /get_notice     JSON: notice + image + alignment + schedule + rev + active flag
  ├── /upload_image   save poster to server/uploads/
+ ├── /cancel_scheduled  cancel waiting scheduled content
  └── /uploads/...    serve posters
         │  HTTPS — polls every 5 seconds
         ▼
@@ -138,7 +147,7 @@ A debugging journal from real deployments and live demonstrations.
 ### 🚨 Production Incidents
 - **Wrong time on TVs during a live demo** — the cloud server runs in UTC while the school follows Indian Standard Time. *Fix:* server-side IST timestamps (`UTC+5:30`) attached to every notice, so displays never trust the TV's own clock.
 - **TVs kept showing old notices** — kiosk browsers aggressively cached the polling response. *Fix:* cache-busting URLs (`?t=…`) plus server `Cache-Control: no-store` headers.
-- **A new poster wouldn't replace the old one** — images are stored under a fixed filename, so the display saw "same name = same image". *Fix:* the server stamps a fresh timestamp on every upload and the display refreshes whenever the name *or* the timestamp changes.
+- **A new poster wouldn't replace the old one** — images are stored under a fixed filename, so the display saw "same name = same image". *Fix attempt:* timestamp-only refresh failed because timestamps had minute-level resolution (two uploads in the same minute looked identical). *Final fix:* a revision counter (`rev`) that increments on every change, so the display refreshes whenever the notice text, image name *or* `rev` changes — making missed updates impossible.
 
 ### 🎨 Frontend & Layout Battles
 - **Line breaks typed in the admin editor vanished on the TV** — HTML collapses newlines by default. *Fix:* `white-space: pre-wrap`.
@@ -152,6 +161,7 @@ A debugging journal from real deployments and live demonstrations.
 - **"Fixed" code appeared not to work** — the running server and open tabs kept old code in memory. *Fix:* kill all server processes, start a single server, and test in a fresh private browser window.
 - **Admin buttons did nothing** — an inline script re-declared a `const` already declared in `admin.js`, killing the script with a silent SyntaxError. *Fix:* wrap inline scripts in their own function scope (IIFE).
 - **A rebuilt HTML file lost all styling** — rewriting `display.html` without knowing the CSS structure broke the layout. *Fix:* restored from a `.bak` backup. *Lesson:* always back up before overwriting.
+- **Manual copy-paste of AI-written code kept corrupting files** — *Fix:* moved to constrained AI pair-programming: strict rules-of-engagement prompts, clean branch snapshots, and human review of every diff before commit.
 
 ### 🔀 Git & Deployment Recovery
 - **`git pull` blocked on the live server** — local test data in `notice.txt` would be overwritten. *Fix:* `git restore` the file, then pull.
@@ -165,9 +175,18 @@ A debugging journal from real deployments and live demonstrations.
 
 ---
 
+## 📜 Changelog
+- ✅ **Scheduling release** — scheduled notices with publish/expire windows, Hold & Queue, one-step scheduled posters, cancel scheduled button, show/hide password toggle
+- ✅ **Poster polish release** — text alignment, live preview tab, admin session invalidation
+- ✅ **Poster release** — poster upload with one-click live swap via revision-counter sync, server-side IST timestamps, offline caching
+- ✅ **Initial web release** — PythonAnywhere cloud deployment, Waitress production server, password-protected admin
+
+---
+
 ## 🎯 Next Goals
-- ⏳ Scheduled notices (auto-publish at a set time).
 - ⏳ Multiple posters with automatic rotation.
+- ⏳ Caption mode (poster + text visible together)
+- ⏳ Full auto-fit text sizing
 
 ---
 

@@ -6,6 +6,8 @@ const alignmentBox = document.getElementById("alignment-box");
 const publishAtBox = document.getElementById("publish-at-box");
 const expireAtBox = document.getElementById("expire-at-box");
 const scheduleLabel = document.getElementById("schedule-label");
+const pendingLabel = document.getElementById("pending-label");
+const cancelScheduledBtn = document.getElementById("cancel-scheduled-btn");
 
 function setStatus(text, type) {
   statusLabel.textContent = `Status: ${text}`;
@@ -25,8 +27,58 @@ function formatSchedule(value) {
   return `${dateParts[2]}-${dateParts[1]}-${dateParts[0]} ${parts[1]}`;
 }
 
+async function refreshPendingLabel(data) {
+  if (!pendingLabel || !cancelScheduledBtn) return data;
+  try {
+    let payload = data;
+    if (!payload) {
+      const res = await fetch("/get_notice?t=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) return payload;
+      payload = await res.json();
+    }
+    const pendingPublishAt = payload.pending_publish_at || "";
+    if (!pendingPublishAt) {
+      pendingLabel.hidden = true;
+      pendingLabel.textContent = "";
+      cancelScheduledBtn.hidden = true;
+      return payload;
+    }
+    const pendingImage = payload.pending_image || "";
+    const pendingNotice = (payload.pending_notice || "").trim();
+    const preview = pendingImage ? "poster" : pendingNotice.slice(0, 30);
+    pendingLabel.textContent = `Next up: ${preview} at ${formatSchedule(pendingPublishAt)}`;
+    pendingLabel.hidden = false;
+    cancelScheduledBtn.hidden = false;
+    return payload;
+  } catch (e) { /* keep previous label */ }
+  return data;
+}
+
+async function cancelScheduled() {
+  if (!cancelScheduledBtn) return;
+  cancelScheduledBtn.disabled = true;
+  try {
+    const response = await fetch("/cancel_scheduled", { method: "POST" });
+    const result = await response.text();
+    if (response.ok && result === "Success") {
+      setStatus("Scheduled content cancelled.", "success");
+    } else {
+      setStatus(result || "Cancel failed.", "error");
+    }
+  } catch (error) {
+    setStatus(String(error), "error");
+  } finally {
+    cancelScheduledBtn.disabled = false;
+    refreshScheduleLabel();
+    refreshPendingLabel();
+  }
+}
+
 async function refreshScheduleLabel() {
-  if (!scheduleLabel) return;
+  if (!scheduleLabel) {
+    refreshPendingLabel();
+    return;
+  }
   try {
     const res = await fetch("/get_notice?t=" + Date.now(), { cache: "no-store" });
     if (!res.ok) return;
@@ -36,6 +88,7 @@ async function refreshScheduleLabel() {
     const active = data.active !== false;
     if (!publishAt && !expireAt) {
       scheduleLabel.textContent = "Schedule: none";
+      refreshPendingLabel(data);
       return;
     }
     const now = new Date();
@@ -43,21 +96,16 @@ async function refreshScheduleLabel() {
     const expired = expireDt && !isNaN(expireDt) && now >= expireDt;
     if (!active && expired) {
       scheduleLabel.textContent = `Schedule: expired ${formatSchedule(expireAt)}`;
-      return;
-    }
-    if (!active && publishAt) {
+    } else if (!active && publishAt) {
       scheduleLabel.textContent = `Schedule: will publish ${formatSchedule(publishAt)} (not live yet)`;
-      return;
-    }
-    if (active && expireAt) {
+    } else if (active && expireAt) {
       scheduleLabel.textContent = `Schedule: live now, expires ${formatSchedule(expireAt)}`;
-      return;
-    }
-    if (active && publishAt) {
+    } else if (active && publishAt) {
       scheduleLabel.textContent = `Schedule: live now, published ${formatSchedule(publishAt)}`;
-      return;
+    } else {
+      scheduleLabel.textContent = "Schedule: none";
     }
-    scheduleLabel.textContent = "Schedule: none";
+    refreshPendingLabel(data);
   } catch (e) { /* keep previous label */ }
 }
 
@@ -92,6 +140,7 @@ async function sendNotice() {
       if (publishAtBox) publishAtBox.value = "";
       if (expireAtBox) expireAtBox.value = "";
       refreshScheduleLabel();
+      refreshPendingLabel();
     } else {
       setStatus(responseText || "Server returned an error.", "error");
     }
@@ -103,4 +152,8 @@ async function sendNotice() {
 }
 
 sendBtn.addEventListener("click", sendNotice);
+if (cancelScheduledBtn) cancelScheduledBtn.addEventListener("click", cancelScheduled);
+window.refreshScheduleLabel = refreshScheduleLabel;
+window.refreshPendingLabel = refreshPendingLabel;
 refreshScheduleLabel();
+refreshPendingLabel();

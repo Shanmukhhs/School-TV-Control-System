@@ -25,7 +25,8 @@
         }
         h2 { margin-bottom: 10px; color: #003366; }
         p { color: #666; margin-bottom: 20px; }
-        input[type="password"] {
+        input[type="password"],
+        input[type="text"] {
             width: 100%;
             padding: 12px;
             margin-bottom: 15px;
@@ -46,6 +47,20 @@
             font-weight: bold;
         }
         button:hover { background: #1a6b1a; }
+        .toggle-row {
+            text-align: right;
+            margin: -5px 0 12px;
+        }
+        button.toggle-password {
+            width: auto;
+            padding: 4px 0;
+            background: none;
+            color: #003366;
+            font-size: 0.9rem;
+            font-weight: normal;
+        }
+        button.toggle-password:hover { background: none; color: #001f4d; text-decoration: underline; }
+        button.toggle-password:focus-visible { outline: 2px solid #003366; outline-offset: 2px; }
         .error { color: red; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
@@ -54,12 +69,31 @@
         <h2>Nath Valley School</h2>
         <p>TV Notice System - Admin Login</p>
         <form method="POST">
-            <input type="password" name="password" placeholder="Enter admin password" required>
+            <input type="password" id="password" name="password" placeholder="Enter admin password" required>
+            <div class="toggle-row">
+                <button type="button" id="togglePassword" class="toggle-password" aria-pressed="false" aria-controls="password">Show password</button>
+            </div>
             <button type="submit">Login</button>
         </form>
         {% if error %}
             <p class="error">{{ error }}</p>
         {% endif %}
     </div>
+    <script>
+        (function () {
+            var input = document.getElementById("password");
+            var toggle = document.getElementById("togglePassword");
+            if (!input || !toggle) {
+                return;
+            }
+            toggle.addEventListener("click", function () {
+                var showing = input.type === "text";
+                input.type = showing ? "password" : "text";
+                toggle.textContent = showing ? "Show password" : "Hide password";
+                toggle.setAttribute("aria-pressed", showing ? "false" : "true");
+                input.focus();
+            });
+        })();
+    </script>
 </body>
 </html>
