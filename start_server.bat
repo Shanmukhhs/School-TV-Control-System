@@ -31,6 +31,22 @@ echo.
 
 :env_ready
 
+rem ---------- Skip password setup only if .env is fully configured ----------
+set "ENV_CONFIGURED=0"
+if exist ".env" (
+    findstr /c:"ADMIN_PASSWORD=" ".env" >nul 2>nul && findstr /c:"SECRET_KEY=" ".env" >nul 2>nul && set "ENV_CONFIGURED=1"
+)
+if exist "server\.env" (
+    findstr /c:"ADMIN_PASSWORD=" "server\.env" >nul 2>nul && findstr /c:"SECRET_KEY=" "server\.env" >nul 2>nul && set "ENV_CONFIGURED=1"
+)
+if "%ENV_CONFIGURED%"=="1" (
+    echo [Setup] Existing configuration found in .env - skipping password setup.
+    echo.
+    set "FRESH_SETUP=0"
+    goto :start_server
+)
+set "FRESH_SETUP=1"
+
 rem ---------- Ask for the admin password ----------
 :ask_password
 set "NEW_ADMIN_PASSWORD="
@@ -58,6 +74,7 @@ if errorlevel 1 (
     goto :ask_password
 )
 
+:start_server
 rem ---------- Start the server and open the admin panel ----------
 echo.
 echo Starting School TV Control Server...
@@ -84,7 +101,11 @@ echo Admin panel opened in your default browser.
 
 :done
 echo.
-echo Log in with the password you just chose.
+if "%FRESH_SETUP%"=="1" (
+    echo Log in with the password you just chose.
+) else (
+    echo Log in with your admin password.
+)
 echo To stop the server, close the "School TV Server" window.
 echo.
 ping -n 9 127.0.0.1 >nul
