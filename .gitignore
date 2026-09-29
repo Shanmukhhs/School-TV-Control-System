@@ -11,3 +11,6 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 server/uploads/
+
+# Runtime notice data (auto-created on first run)
+server/notice.txt

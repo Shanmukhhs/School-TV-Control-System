@@ -108,6 +108,12 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(hours=env_positive_int("ADMIN_SESSION_HOURS", 8)),
 )
 
+
+@app.context_processor
+def inject_school_name():
+    return {"school_name": os.environ.get("SCHOOL_NAME", "").strip() or "School Notice System"}
+
+
 CONFIG_PATH = PROJECT_ROOT / "Receiver" / "receiver_config.json"
 
 # Random ID for this server run. Stored in the admin session at login so a

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nath Valley School - TV Notice Management</title>
+  <title>{{ school_name }} - TV Notice Management</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   <style>
     #upload-btn { background:#2e7d32; color:#fff; border:none; padding:12px 24px; font-weight:bold; border-radius:6px; cursor:pointer; }
@@ -14,7 +14,7 @@
 </head>
 <body>
   <main class="container">
-    <h1>NATH VALLEY SCHOOL<br>TV Notice Management</h1>
+    <h1>{{ school_name }}<br>TV Notice Management</h1>
 
     <div class="tabs" role="tablist">
       <button id="tab-compose-btn" class="tab active" type="button" role="tab">Compose</button>
@@ -55,7 +55,7 @@
       <p class="hint">Preview — how it will look on the TV (/display). Check this before sending.</p>
       <div class="tv-frame">
         <div class="tv-header">
-          <img src="{{ url_for('serve_asset', filename='nath valley logo.png') }}" alt="School logo preview" class="tv-logo" onerror="this.style.display='none'">
+          <img src="{{ url_for('serve_asset', filename='school-logo.png') }}" alt="School logo preview" class="tv-logo" onerror="this.style.display='none'">
         </div>
         <hr class="tv-divider">
         <hr class="tv-divider">
