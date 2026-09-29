@@ -45,6 +45,9 @@ def main():
         print("Generated a new random SECRET_KEY.")
 
     values["ADMIN_PASSWORD"] = password
+    school_name = os.environ.get("SCHOOL_NAME", "").strip()
+    if school_name:
+        values["SCHOOL_NAME"] = school_name
     values.setdefault("SESSION_COOKIE_SECURE", "false")
     values.setdefault("ADMIN_SESSION_HOURS", "8")
 

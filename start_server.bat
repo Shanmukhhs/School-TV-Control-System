@@ -40,7 +40,7 @@ if exist "server\.env" (
     findstr /c:"ADMIN_PASSWORD=" "server\.env" >nul 2>nul && findstr /c:"SECRET_KEY=" "server\.env" >nul 2>nul && set "ENV_CONFIGURED=1"
 )
 if "%ENV_CONFIGURED%"=="1" (
-    echo [Setup] Existing configuration found in .env - skipping password setup.
+    echo [Setup] Existing configuration found in .env - skipping setup.
     echo.
     set "FRESH_SETUP=0"
     goto :start_server
@@ -68,6 +68,41 @@ if not "!CONFIRM_PASSWORD!"=="!NEW_ADMIN_PASSWORD!" (
 )
 endlocal
 
+rem ---------- Ask for the school name ----------
+:ask_school_name
+set "SCHOOL_NAME="
+echo What is your school's name? It will be shown on the login page and admin panel so the system feels like yours.
+set /p "SCHOOL_NAME=School name: "
+if not defined SCHOOL_NAME (
+    echo School name cannot be empty. Try again.
+    echo.
+    goto :ask_school_name
+)
+
+rem ---------- Ask about the school logo ----------
+echo Do you want to use your school's logo on the TV displays? (Y/N)
+set "LOGO_CHOICE="
+set /p "LOGO_CHOICE=Use school logo? [Y/N]: "
+if /I "%LOGO_CHOICE%"=="Y" goto :ask_logo
+if /I "%LOGO_CHOICE%"=="YES" goto :ask_logo
+goto :run_setup_env
+
+:ask_logo
+set "LOGO_FILE="
+for /f "delims=" %%F in ('powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; $d.Filter = 'PNG files (*.png)^|*.png'; $d.Title = 'Select your school logo'; if ($d.ShowDialog() -eq 'OK') { Write-Output $d.FileName }"') do set "LOGO_FILE=%%F"
+if not defined LOGO_FILE (
+    echo No problem - you can paste your logo into the Assets folder later and name it school-logo.png
+    goto :run_setup_env
+)
+if not exist "Assets" mkdir "Assets" >nul 2>nul
+copy /Y "%LOGO_FILE%" "Assets\school-logo.png" >nul 2>nul
+if errorlevel 1 (
+    echo No problem - you can paste your logo into the Assets folder later and name it school-logo.png
+) else (
+    echo Logo saved to Assets\school-logo.png
+)
+
+:run_setup_env
 "%PYTHON%" "server\setup_env.py"
 if errorlevel 1 (
     echo.
