@@ -1,8 +1,9 @@
 # 📺 School TV Control System (Web)
 
-A fully web-based, cloud-connected notice management system for Nath Valley School.
-Administrators send text notices and event posters from any device, and every
-connected TV updates within seconds.
+A fully web-based notice management system for schools. Deploy it on the school's
+own local network (LAN) for a fully offline setup, or in the cloud - administrators
+send text notices and event posters from any device, and every connected TV updates
+within seconds.
 
 ---
 
@@ -44,22 +45,26 @@ connected TV updates within seconds.
 - ✅ Show/hide password toggle on the login page
 - ✅ Server-instance session invalidation (restarting the server logs out all admin sessions)
 
+**Personalization & Deployment**
+- ✅ First-run interactive setup: the launcher asks for an admin password, the school's name, and optionally the school logo (via a file picker)
+- ✅ School name appears automatically on the login page and admin panel
+- ✅ Custom school logo shown on TV displays and admin preview
+- ✅ Silent restarts: on later runs the launcher detects the existing `.env` and starts instantly with no questions
+
 **Deployment & Teamwork**
 - ✅ Runs locally on a LAN *or* in the cloud (PythonAnywhere) with zero code changes
 - ✅ One-click Windows launcher (`start_server.bat`)
-- ✅ Professional Git workflow: feature branches → pull requests → peer review → merge
+- ✅ Professional Git workflow: feature branches → pull requests → peer review → merge (branch protection requires a pull request)
 
 ---
 
 ## 🚀 Quick Start
 
 ### Easiest way (Windows)
-Double-click `start_server.bat`. It will:
-- Ask you to choose an admin password (minimum 8 characters, confirmed twice).
-- Create the Python virtual environment and install dependencies on first run.
-- Save your settings to a local `.env` file (never committed).
-- Start the production server (Waitress) in its own window.
-- Open the admin panel at `http://127.0.0.1:5000/admin` in your default browser.
+Double-click `start_server.bat`.
+- On FIRST run: asks you to choose an admin password (minimum 8 characters, confirmed twice), then the school's name, then offers to upload a school logo (opens a file picker).
+- On FIRST run: creates the Python virtual environment and installs dependencies, saves your settings to a local `.env` file (never committed), starts the production server (Waitress) in its own window, and opens the admin panel at `http://127.0.0.1:5000/admin` in your default browser.
+- On LATER runs: detects the existing `.env` and skips all questions, starting the server instantly.
 
 To stop the server, close the "School TV Server" window.
 
@@ -106,6 +111,7 @@ Old plain-text notice files are still read via an automatic fallback.
 |---|---|---|
 | `SECRET_KEY` | Signs admin sessions | *required* |
 | `ADMIN_PASSWORD` | Admin login password | *required* |
+| `SCHOOL_NAME` | School name shown on login/admin pages | School Notice System |
 | `SESSION_COOKIE_SECURE` | Force secure cookies | `false` |
 | `ADMIN_SESSION_HOURS` | Admin session lifetime | `8` |
 
@@ -176,17 +182,11 @@ A debugging journal from real deployments and live demonstrations.
 ---
 
 ## 📜 Changelog
+- ✅ **White-label release** - multi-school deployment: first-run interactive setup (admin password, school name, logo picker), dynamic school-name branding on login/admin pages, generic starter logo, runtime data (notice.txt, uploads) removed from version control
 - ✅ **Scheduling release** — scheduled notices with publish/expire windows, Hold & Queue, one-step scheduled posters, cancel scheduled button, show/hide password toggle
 - ✅ **Poster polish release** — text alignment, live preview tab, admin session invalidation
 - ✅ **Poster release** — poster upload with one-click live swap via revision-counter sync, server-side IST timestamps, offline caching
 - ✅ **Initial web release** — PythonAnywhere cloud deployment, Waitress production server, password-protected admin
-
----
-
-## 🎯 Next Goals
-- ⏳ Multiple posters with automatic rotation.
-- ⏳ Caption mode (poster + text visible together)
-- ⏳ Full auto-fit text sizing
 
 ---
 
